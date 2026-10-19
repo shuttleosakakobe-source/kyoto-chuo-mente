@@ -26,11 +26,11 @@ OT_MODE_NAME = "その他"
 # 「その他のメンテナンス」モード用シート
 # ==========================================
 # TAB1・TAB2用（申請〜承認）
-OT_TARGET_SHEET_URL = "https://docs.google.com/spreadsheets/d/1wphBZ_xRGNhy6Sc_TMzdCMrveJtdYKuybueIVXksVmA/edit?gid=1623118092#gid=1623118092"
-OT_TARGET_SHEET_CSV = "https://docs.google.com/spreadsheets/d/1wphBZ_xRGNhy6Sc_TMzdCMrveJtdYKuybueIVXksVmA/gviz/tq?tqx=out:csv&gid=1623118092"
+OT_TARGET_SHEET_URL = "https://docs.google.com/spreadsheets/d/1IeHd44h8DLVQ5lfzrUfOqQTeCqwKZxyTZncsx5zmIKI/edit?gid=1535241029#gid=1535241029"
+OT_TARGET_SHEET_CSV = "https://docs.google.com/spreadsheets/d/1IeHd44h8DLVQ5lfzrUfOqQTeCqwKZxyTZncsx5zmIKI/gviz/tq?tqx=out:csv&gid=1535241029"
 # TAB3・TAB4用（転記〜チェック）
-OT_DEST_SHEET_URL = "https://docs.google.com/spreadsheets/d/16oxBVjnVefhpuPiodpH8jWzjjZ3Vp_tFbcOkpizU5zk/edit?gid=1292519782#gid=1292519782"
-OT_DEST_SHEET_CSV = "https://docs.google.com/spreadsheets/d/16oxBVjnVefhpuPiodpH8jWzjjZ3Vp_tFbcOkpizU5zk/gviz/tq?tqx=out:csv&gid=1292519782"
+OT_DEST_SHEET_URL = "https://docs.google.com/spreadsheets/d/1SYJ5WlSZku_mSJSH803kKNEe4zMQL6UJ0UdXxx6N4aA/edit?gid=1619894071#gid=1619894071"
+OT_DEST_SHEET_CSV = "https://docs.google.com/spreadsheets/d/1SYJ5WlSZku_mSJSH803kKNEe4zMQL6UJ0UdXxx6N4aA/gviz/tq?tqx=out:csv&gid=1619894071"
 
 # その他のメンテナンス：プルダウンの選択肢（最後の「その他」を選んだ場合のみ記述式で内容を入力）
 OT_CATEGORY_OPTIONS = ["住所・電話番号変更", "コメント", "未収金・過入金変更", "その他"]
@@ -56,7 +56,7 @@ OT_COL = {
 }
 
 # 「その他のメンテナンス」モードTAB5用：加盟店別 印刷フォーマットのスプレッドシート（同じブック内・別タブ）
-OT_PRINT_SHEET_GID = "1519347246"
+OT_PRINT_SHEET_GID = "1299348821"
 OT_PRINT_SHEET_URL = f"https://docs.google.com/spreadsheets/d/{PRINT_SHEET_ID}/edit?gid={OT_PRINT_SHEET_GID}#gid={OT_PRINT_SHEET_GID}"
 # 1ページに5件まで配置。各件の起点行（A列、店名/顧客名/責任者/処理者の行）：
 # 1件目=4, 2件目=13, 3件目=22, 4件目=31, 5件目=40（実テンプレートをクリックして確認：ブロックの高さは9行で均一）

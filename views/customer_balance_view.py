@@ -29,11 +29,11 @@ KZ_MODE_NAME = "客中残訂正"
 # 「客中残訂正」モード用シート
 # ==========================================
 # TAB1・TAB2用（申請〜承認）
-KZ_TARGET_SHEET_URL = "https://docs.google.com/spreadsheets/d/1wphBZ_xRGNhy6Sc_TMzdCMrveJtdYKuybueIVXksVmA/edit?gid=1426054920#gid=1426054920"
-KZ_TARGET_SHEET_CSV = "https://docs.google.com/spreadsheets/d/1wphBZ_xRGNhy6Sc_TMzdCMrveJtdYKuybueIVXksVmA/gviz/tq?tqx=out:csv&gid=1426054920"
+KZ_TARGET_SHEET_URL = "https://docs.google.com/spreadsheets/d/1IeHd44h8DLVQ5lfzrUfOqQTeCqwKZxyTZncsx5zmIKI/edit?gid=1987434805#gid=1987434805"
+KZ_TARGET_SHEET_CSV = "https://docs.google.com/spreadsheets/d/1IeHd44h8DLVQ5lfzrUfOqQTeCqwKZxyTZncsx5zmIKI/gviz/tq?tqx=out:csv&gid=1987434805"
 # TAB3・TAB4用（転記〜チェック）
-KZ_DEST_SHEET_URL = "https://docs.google.com/spreadsheets/d/16oxBVjnVefhpuPiodpH8jWzjjZ3Vp_tFbcOkpizU5zk/edit?gid=311903417#gid=311903417"
-KZ_DEST_SHEET_CSV = "https://docs.google.com/spreadsheets/d/16oxBVjnVefhpuPiodpH8jWzjjZ3Vp_tFbcOkpizU5zk/gviz/tq?tqx=out:csv&gid=311903417"
+KZ_DEST_SHEET_URL = "https://docs.google.com/spreadsheets/d/1SYJ5WlSZku_mSJSH803kKNEe4zMQL6UJ0UdXxx6N4aA/edit?gid=1809423102#gid=1809423102"
+KZ_DEST_SHEET_CSV = "https://docs.google.com/spreadsheets/d/1SYJ5WlSZku_mSJSH803kKNEe4zMQL6UJ0UdXxx6N4aA/gviz/tq?tqx=out:csv&gid=1809423102"
 
 # 客中残訂正：列インデックス（0始まり）
 # A タイムスタンプ, B 担当者(申請者), C 顧客コード, D 顧客名, E 加盟店, F 加盟店コード,
@@ -66,7 +66,7 @@ KZ_COL = {
 }
 
 # 「客中残訂正」モードTAB5用：加盟店別 印刷フォーマットのスプレッドシート（同じブック内・別タブ）
-KZ_PRINT_SHEET_GID = "1068328164"
+KZ_PRINT_SHEET_GID = "452341821"
 KZ_PRINT_SHEET_URL = f"https://docs.google.com/spreadsheets/d/{PRINT_SHEET_ID}/edit?gid={KZ_PRINT_SHEET_GID}#gid={KZ_PRINT_SHEET_GID}"
 # 1ページに3件まで配置。各件の起点行（A列、店名/顧客名/責任者/処理者の行）：1件目=4, 2件目=19, 3件目=34
 # （実テンプレートをクリックして確認：ブロックの高さは15行で均一）

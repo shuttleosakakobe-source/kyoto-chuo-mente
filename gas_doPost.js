@@ -31,7 +31,7 @@ function doPost(e) {
 
     // ==========================================
     // 1. タブ1・2用（申請・承認・差戻しなど）
-    // 対象: https://docs.google.com/spreadsheets/d/1wphBZ_xRGNhy6Sc_TMzdCMrveJtdYKuybueIVXksVmA/edit?gid=0#gid=0
+    // 対象: https://docs.google.com/spreadsheets/d/1IeHd44h8DLVQ5lfzrUfOqQTeCqwKZxyTZncsx5zmIKI/edit?gid=1545570796#gid=1545570796
     // 「ルート変更」「契約内容変更」モードの SUBMIT_ROUTE_CHANGE / SUBMIT_CONTRACT_CHANGE 等も同じ分岐を共用する
     // （target_sheet_url で書き込み先シートを切り替える）
     // ==========================================
@@ -44,7 +44,7 @@ function doPost(e) {
         action === "SUBMIT_PERIOD_STOP_CHANGE" || action === "RESUBMIT_PERIOD_STOP_CHANGE" || action === "APPROVE_PERIOD_STOP_CHANGE" || action === "REJECT_PERIOD_STOP_CHANGE" || action === "DELETE_PERIOD_STOP_CHANGE" ||
         action === "SUBMIT_OTHER_MAINTENANCE_CHANGE" || action === "RESUBMIT_OTHER_MAINTENANCE_CHANGE" || action === "APPROVE_OTHER_MAINTENANCE_CHANGE" || action === "REJECT_OTHER_MAINTENANCE_CHANGE" || action === "DELETE_OTHER_MAINTENANCE_CHANGE" ||
         action === "SUBMIT_CANCEL_CHANGE" || action === "RESUBMIT_CANCEL_CHANGE" || action === "APPROVE_CANCEL_CHANGE" || action === "REJECT_CANCEL_CHANGE" || action === "DELETE_CANCEL_CHANGE") {
-      var targetUrl = data.target_sheet_url || "https://docs.google.com/spreadsheets/d/1wphBZ_xRGNhy6Sc_TMzdCMrveJtdYKuybueIVXksVmA/edit?gid=0#gid=0";
+      var targetUrl = data.target_sheet_url || "https://docs.google.com/spreadsheets/d/1IeHd44h8DLVQ5lfzrUfOqQTeCqwKZxyTZncsx5zmIKI/edit?gid=1545570796#gid=1545570796";
       var sheet = getSheetFromUrl(targetUrl);
 
       if (action === "SUBMIT_MAINTENANCE" || action === "SUBMIT_ROUTE_CHANGE" || action === "SUBMIT_CONTRACT_CHANGE" || action === "SUBMIT_SPOT_ROUTE_CHANGE" || action === "SUBMIT_DELIVERY_QTY_CHANGE" || action === "SUBMIT_CUSTOMER_BALANCE_CHANGE" || action === "SUBMIT_PERIOD_STOP_CHANGE" || action === "SUBMIT_OTHER_MAINTENANCE_CHANGE" || action === "SUBMIT_CANCEL_CHANGE") {
@@ -58,18 +58,18 @@ function doPost(e) {
 
     // ==========================================
     // 2. タブ3用（業務転記：タブ1・2用シートの行を「業務転記済」にし、タブ3・4用の実データシートへ追加）
-    // 転記先: https://docs.google.com/spreadsheets/d/16oxBVjnVefhpuPiodpH8jWzjjZ3Vp_tFbcOkpizU5zk/edit?gid=0#gid=0
+    // 転記先: https://docs.google.com/spreadsheets/d/1SYJ5WlSZku_mSJSH803kKNEe4zMQL6UJ0UdXxx6N4aA/edit?gid=246490748#gid=246490748
     // 「ルート変更」「契約内容変更」モードの TRANSFER_ROUTE_TO_OPERATOR / TRANSFER_CONTRACT_CHANGE_TO_OPERATOR も共用
     // （data.status_col で「業務転記済」を書く列を切り替え、未指定時は商品発注の31列目 = AE列がデフォルト）
     // ==========================================
     } else if (action === "TRANSFER_TO_OPERATOR" || action === "TRANSFER_ROUTE_TO_OPERATOR" || action === "TRANSFER_CONTRACT_CHANGE_TO_OPERATOR" || action === "TRANSFER_SPOT_ROUTE_TO_OPERATOR" || action === "TRANSFER_DELIVERY_QTY_TO_OPERATOR" || action === "TRANSFER_CUSTOMER_BALANCE_TO_OPERATOR" || action === "TRANSFER_PERIOD_STOP_TO_OPERATOR" || action === "TRANSFER_OTHER_MAINTENANCE_TO_OPERATOR" || action === "TRANSFER_CANCEL_TO_OPERATOR") {
-      var targetUrl = data.target_sheet_url || "https://docs.google.com/spreadsheets/d/1wphBZ_xRGNhy6Sc_TMzdCMrveJtdYKuybueIVXksVmA/edit?gid=0#gid=0";
+      var targetUrl = data.target_sheet_url || "https://docs.google.com/spreadsheets/d/1IeHd44h8DLVQ5lfzrUfOqQTeCqwKZxyTZncsx5zmIKI/edit?gid=1545570796#gid=1545570796";
       var sheet = getSheetFromUrl(targetUrl);
       var rowIndex = data.row_index;
       var statusCol = data.status_col || 31;
       sheet.getRange(rowIndex, statusCol).setValue("業務転記済");
 
-      var destUrl = data.dest_sheet_url || "https://docs.google.com/spreadsheets/d/16oxBVjnVefhpuPiodpH8jWzjjZ3Vp_tFbcOkpizU5zk/edit?gid=0#gid=0";
+      var destUrl = data.dest_sheet_url || "https://docs.google.com/spreadsheets/d/1SYJ5WlSZku_mSJSH803kKNEe4zMQL6UJ0UdXxx6N4aA/edit?gid=246490748#gid=246490748";
       var destSheet = getSheetFromUrl(destUrl);
       destSheet.appendRow(data.transfer_row);
 
@@ -77,11 +77,11 @@ function doPost(e) {
 
     // ==========================================
     // 3. タブ4用（メンテナンスチェックの更新）
-    // 対象: https://docs.google.com/spreadsheets/d/16oxBVjnVefhpuPiodpH8jWzjjZ3Vp_tFbcOkpizU5zk/edit?gid=0#gid=0
+    // 対象: https://docs.google.com/spreadsheets/d/1SYJ5WlSZku_mSJSH803kKNEe4zMQL6UJ0UdXxx6N4aA/edit?gid=246490748#gid=246490748
     // 「ルート変更」「契約内容変更」モードの UPDATE_ROUTE_CHECK / UPDATE_CONTRACT_CHANGE_CHECK も同じ分岐を共用する
     // ==========================================
     } else if (action === "UPDATE_MAINTENANCE_CHECK" || action === "UPDATE_ROUTE_CHECK" || action === "UPDATE_CONTRACT_CHANGE_CHECK" || action === "UPDATE_SPOT_ROUTE_CHECK" || action === "UPDATE_DELIVERY_QTY_CHECK" || action === "UPDATE_CUSTOMER_BALANCE_CHECK" || action === "UPDATE_PERIOD_STOP_CHECK" || action === "UPDATE_OTHER_MAINTENANCE_CHECK" || action === "UPDATE_CANCEL_CHECK") {
-      var destUrl = data.target_sheet_url || "https://docs.google.com/spreadsheets/d/16oxBVjnVefhpuPiodpH8jWzjjZ3Vp_tFbcOkpizU5zk/edit?gid=0#gid=0";
+      var destUrl = data.target_sheet_url || "https://docs.google.com/spreadsheets/d/1SYJ5WlSZku_mSJSH803kKNEe4zMQL6UJ0UdXxx6N4aA/edit?gid=246490748#gid=246490748";
       var destSheet = getSheetFromUrl(destUrl);
 
       var rowIndex = data.row_index;
@@ -94,8 +94,8 @@ function doPost(e) {
 
     // ==========================================
     // 4. タブ5用（印刷フォーマット用スプレッドシートへ、C1と数件分のブロックをまとめて反映する）
-    // 対象: https://docs.google.com/spreadsheets/d/16oxBVjnVefhpuPiodpH8jWzjjZ3Vp_tFbcOkpizU5zk/edit?gid=457221393#gid=457221393（商品発注）
-    //       https://docs.google.com/spreadsheets/d/16oxBVjnVefhpuPiodpH8jWzjjZ3Vp_tFbcOkpizU5zk/edit?gid=1261728197#gid=1261728197（ルート変更）
+    // 対象: https://docs.google.com/spreadsheets/d/1SYJ5WlSZku_mSJSH803kKNEe4zMQL6UJ0UdXxx6N4aA/edit?gid=466714305#gid=466714305（商品発注）
+    //       https://docs.google.com/spreadsheets/d/1SYJ5WlSZku_mSJSH803kKNEe4zMQL6UJ0UdXxx6N4aA/edit?gid=883066081#gid=883066081（ルート変更）
     // data.c1_value は文字列、data.blocks は2種類の形式に対応する（block単位でどちらか片方）：
     //   (a) 商品発注用: {start_row: 4, rows: [{offset: 0, values: [...5列...]}, {offset: 2, values: [...]}, ...]}
     //   (b) ルート変更用: {start_row: 4, cells: [{offset: 0, col: 1, value: "..."}, {offset: 2, col: 3, value: "..."}, ...]}
@@ -104,7 +104,7 @@ function doPost(e) {
     //   空文字で上書きされ消えてしまっていた）。
     // ==========================================
     } else if (action === "SYNC_PRINT_STORE_DATA") {
-      var printUrl = data.print_sheet_url || data.dest_sheet_url || "https://docs.google.com/spreadsheets/d/16oxBVjnVefhpuPiodpH8jWzjjZ3Vp_tFbcOkpizU5zk/edit?gid=457221393#gid=457221393";
+      var printUrl = data.print_sheet_url || data.dest_sheet_url || "https://docs.google.com/spreadsheets/d/1SYJ5WlSZku_mSJSH803kKNEe4zMQL6UJ0UdXxx6N4aA/edit?gid=466714305#gid=466714305";
       var printSheet = getSheetFromUrl(printUrl);
 
       if (data.c1_value !== undefined) {
@@ -145,12 +145,12 @@ function doPost(e) {
 
     // ==========================================
     // 5. タブ5用（印刷済みマーク：実データシートの指定列に印刷日時を入れる）
-    // 対象: https://docs.google.com/spreadsheets/d/16oxBVjnVefhpuPiodpH8jWzjjZ3Vp_tFbcOkpizU5zk/edit?gid=0#gid=0
+    // 対象: https://docs.google.com/spreadsheets/d/1SYJ5WlSZku_mSJSH803kKNEe4zMQL6UJ0UdXxx6N4aA/edit?gid=246490748#gid=246490748
     // data.row_indices は実際のシート行番号（1始まり）の配列
     // data.print_col は書き込み先の列番号（1始まり）。未指定時は商品発注のAL列＝38列目がデフォルト
     // ==========================================
     } else if (action === "MARK_PRINTED") {
-      var targetUrl = data.target_sheet_url || "https://docs.google.com/spreadsheets/d/16oxBVjnVefhpuPiodpH8jWzjjZ3Vp_tFbcOkpizU5zk/edit?gid=0#gid=0";
+      var targetUrl = data.target_sheet_url || "https://docs.google.com/spreadsheets/d/1SYJ5WlSZku_mSJSH803kKNEe4zMQL6UJ0UdXxx6N4aA/edit?gid=246490748#gid=246490748";
       var sheet = getSheetFromUrl(targetUrl);
       var printCol = data.print_col || 38;
       var printTime = data.print_time || Utilities.formatDate(new Date(), "JST", "yyyy/MM/dd HH:mm:ss");
@@ -186,7 +186,7 @@ function doPost(e) {
     // ==========================================
     // 7. 業務担当コメント通知用（TAB3「業務担当」で、差戻しとは別に申請者への連絡
     //    コメントを残せるようにするための共有シート）
-    // 対象: https://docs.google.com/spreadsheets/d/16oxBVjnVefhpuPiodpH8jWzjjZ3Vp_tFbcOkpizU5zk/edit?gid=876912853#gid=876912853
+    // 対象: https://docs.google.com/spreadsheets/d/1SYJ5WlSZku_mSJSH803kKNEe4zMQL6UJ0UdXxx6N4aA/edit?gid=1951557240#gid=1951557240
     // 列（1始まり）：A=タイムスタンプ, B=モード名, C=顧客コード, D=顧客名,
     //   E=申請者（通知先）, F=コメント本文, G=記入した業務担当者, H=確認済みフラグ, I=確認日時
     // ==========================================

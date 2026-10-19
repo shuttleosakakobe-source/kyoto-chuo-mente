@@ -21,7 +21,7 @@ CC_MODE_NAME = "契約内容変更"
 
 
 # 「契約内容変更」モードTAB5用：加盟店別 印刷フォーマットのスプレッドシート（同じブック内・別タブ）
-CC_PRINT_SHEET_GID = "88627179"
+CC_PRINT_SHEET_GID = "1390409653"
 CC_PRINT_SHEET_URL = f"https://docs.google.com/spreadsheets/d/{PRINT_SHEET_ID}/edit?gid={CC_PRINT_SHEET_GID}#gid={CC_PRINT_SHEET_GID}"
 # 1ページに3件まで配置。各件の起点行（A列）：1件目=4, 2件目=18, 3件目=32
 CC_PRINT_BASE_ROWS = [4, 18, 32]
@@ -30,11 +30,11 @@ CC_PRINT_BASE_ROWS = [4, 18, 32]
 # 「契約内容変更」モード用シート
 # ==========================================
 # TAB1・TAB2用（申請〜承認）
-CC_TARGET_SHEET_URL = "https://docs.google.com/spreadsheets/d/1wphBZ_xRGNhy6Sc_TMzdCMrveJtdYKuybueIVXksVmA/edit?gid=40673825#gid=40673825"
-CC_TARGET_SHEET_CSV = "https://docs.google.com/spreadsheets/d/1wphBZ_xRGNhy6Sc_TMzdCMrveJtdYKuybueIVXksVmA/gviz/tq?tqx=out:csv&gid=40673825"
+CC_TARGET_SHEET_URL = "https://docs.google.com/spreadsheets/d/1IeHd44h8DLVQ5lfzrUfOqQTeCqwKZxyTZncsx5zmIKI/edit?gid=996744145#gid=996744145"
+CC_TARGET_SHEET_CSV = "https://docs.google.com/spreadsheets/d/1IeHd44h8DLVQ5lfzrUfOqQTeCqwKZxyTZncsx5zmIKI/gviz/tq?tqx=out:csv&gid=996744145"
 # TAB3・TAB4用（転記〜チェック）
-CC_DEST_SHEET_URL = "https://docs.google.com/spreadsheets/d/16oxBVjnVefhpuPiodpH8jWzjjZ3Vp_tFbcOkpizU5zk/edit?gid=1232708804#gid=1232708804"
-CC_DEST_SHEET_CSV = "https://docs.google.com/spreadsheets/d/16oxBVjnVefhpuPiodpH8jWzjjZ3Vp_tFbcOkpizU5zk/gviz/tq?tqx=out:csv&gid=1232708804"
+CC_DEST_SHEET_URL = "https://docs.google.com/spreadsheets/d/1SYJ5WlSZku_mSJSH803kKNEe4zMQL6UJ0UdXxx6N4aA/edit?gid=180097524#gid=180097524"
+CC_DEST_SHEET_CSV = "https://docs.google.com/spreadsheets/d/1SYJ5WlSZku_mSJSH803kKNEe4zMQL6UJ0UdXxx6N4aA/gviz/tq?tqx=out:csv&gid=180097524"
 
 # 契約内容変更：列インデックス（0始まり）
 # A タイムスタンプ, B 担当者(申請者), C 顧客コード, D 顧客名, E 加盟店, F 加盟店コード,

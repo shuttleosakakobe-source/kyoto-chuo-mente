@@ -25,11 +25,11 @@ ROUTE_MODE_NAME = "ルート変更"
 # 「ルート変更」モード用シート
 # ==========================================
 # TAB1・TAB2用（申請〜承認）
-ROUTE_TARGET_SHEET_URL = "https://docs.google.com/spreadsheets/d/1wphBZ_xRGNhy6Sc_TMzdCMrveJtdYKuybueIVXksVmA/edit?gid=569308342#gid=569308342"
-ROUTE_TARGET_SHEET_CSV = "https://docs.google.com/spreadsheets/d/1wphBZ_xRGNhy6Sc_TMzdCMrveJtdYKuybueIVXksVmA/gviz/tq?tqx=out:csv&gid=569308342"
+ROUTE_TARGET_SHEET_URL = "https://docs.google.com/spreadsheets/d/1IeHd44h8DLVQ5lfzrUfOqQTeCqwKZxyTZncsx5zmIKI/edit?gid=818808630#gid=818808630"
+ROUTE_TARGET_SHEET_CSV = "https://docs.google.com/spreadsheets/d/1IeHd44h8DLVQ5lfzrUfOqQTeCqwKZxyTZncsx5zmIKI/gviz/tq?tqx=out:csv&gid=818808630"
 # TAB3・TAB4用（転記〜チェック）
-ROUTE_DEST_SHEET_URL = "https://docs.google.com/spreadsheets/d/16oxBVjnVefhpuPiodpH8jWzjjZ3Vp_tFbcOkpizU5zk/edit?gid=1247639196#gid=1247639196"
-ROUTE_DEST_SHEET_CSV = "https://docs.google.com/spreadsheets/d/16oxBVjnVefhpuPiodpH8jWzjjZ3Vp_tFbcOkpizU5zk/gviz/tq?tqx=out:csv&gid=1247639196"
+ROUTE_DEST_SHEET_URL = "https://docs.google.com/spreadsheets/d/1SYJ5WlSZku_mSJSH803kKNEe4zMQL6UJ0UdXxx6N4aA/edit?gid=890306702#gid=890306702"
+ROUTE_DEST_SHEET_CSV = "https://docs.google.com/spreadsheets/d/1SYJ5WlSZku_mSJSH803kKNEe4zMQL6UJ0UdXxx6N4aA/gviz/tq?tqx=out:csv&gid=890306702"
 
 # ルート変更：列インデックス（0始まり）
 # A タイムスタンプ, B 担当者(申請者), C 顧客コード, D 顧客名, E 加盟店, F 加盟店コード,
@@ -57,7 +57,7 @@ CONTRACT_COL_STAFF_NAME = 5
 CONTRACT_COL_WEEKDAY = 6
 
 # 「ルート変更」モードTAB5用：加盟店別 印刷フォーマットのスプレッドシート（同じブック内・別タブ）
-ROUTE_PRINT_SHEET_GID = "1261728197"
+ROUTE_PRINT_SHEET_GID = "883066081"
 ROUTE_PRINT_SHEET_URL = f"https://docs.google.com/spreadsheets/d/{PRINT_SHEET_ID}/edit?gid={ROUTE_PRINT_SHEET_GID}#gid={ROUTE_PRINT_SHEET_GID}"
 # 1ページに4件まで配置。各件の起点行（A列）：1件目=4, 2件目=15, 3件目=26, 4件目=38
 ROUTE_PRINT_BASE_ROWS = [4, 15, 26, 38]

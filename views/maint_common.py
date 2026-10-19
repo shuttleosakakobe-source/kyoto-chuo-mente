@@ -36,11 +36,11 @@ ROUTE_ROSTER_STAFF_COL_START = 3  # D列（0始まり）から担当者ごとの
 # 残せるようにするための共有シート。列（0始まり）：
 # 0=タイムスタンプ, 1=モード名, 2=顧客コード, 3=顧客名, 4=申請者（通知先）,
 # 5=コメント本文, 6=記入した業務担当者, 7=確認済みフラグ, 8=確認日時）
-STAFF_COMMENT_SHEET_URL = "https://docs.google.com/spreadsheets/d/16oxBVjnVefhpuPiodpH8jWzjjZ3Vp_tFbcOkpizU5zk/edit?gid=876912853#gid=876912853"
-STAFF_COMMENT_CSV = "https://docs.google.com/spreadsheets/d/16oxBVjnVefhpuPiodpH8jWzjjZ3Vp_tFbcOkpizU5zk/gviz/tq?tqx=out:csv&gid=876912853"
+STAFF_COMMENT_SHEET_URL = "https://docs.google.com/spreadsheets/d/1SYJ5WlSZku_mSJSH803kKNEe4zMQL6UJ0UdXxx6N4aA/edit?gid=1951557240#gid=1951557240"
+STAFF_COMMENT_CSV = "https://docs.google.com/spreadsheets/d/1SYJ5WlSZku_mSJSH803kKNEe4zMQL6UJ0UdXxx6N4aA/gviz/tq?tqx=out:csv&gid=1951557240"
 
 # TAB5用：加盟店別 印刷フォーマットのスプレッドシート（DEST_SHEET_URLとは別シート／gidが違う点に注意）
-PRINT_SHEET_ID = "16oxBVjnVefhpuPiodpH8jWzjjZ3Vp_tFbcOkpizU5zk"
+PRINT_SHEET_ID = "1SYJ5WlSZku_mSJSH803kKNEe4zMQL6UJ0UdXxx6N4aA"
 
 
 def build_print_pdf_url(row_end=46, col_end=5, gid=None):

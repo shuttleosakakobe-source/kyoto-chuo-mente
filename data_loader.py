@@ -2,8 +2,9 @@ import streamlit as st
 import pandas as pd
 import requests
 
-# 新しいユーザーマスターのURL
-USER_MASTER_CSV = "https://docs.google.com/spreadsheets/d/1psNFcJnLEtKA5aV8L1S2lz1Lf43CbMtHgK3wiYQjm3M/gviz/tq?tqx=out:csv&gid=0"
+# ログイン情報は、kensaku（神戸中央店版）・campaign-tally・sales-tallyと共通のユーザーマスターを
+# 参照する（B列＝拠点が「京都中央店」の行だけをapp.py側でログイン対象として絞り込む）。
+USER_MASTER_CSV = "https://docs.google.com/spreadsheets/d/1AkMb1J2m3VZAIyMCKmr3T3E8-kJB0BDDdWQJuEn7YGc/gviz/tq?tqx=out:csv&gid=0"
 
 def load_sheet_data(gid="0"):
     """ユーザーマスターのスプレッドシートからデータを取得

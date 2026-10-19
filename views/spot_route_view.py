@@ -27,11 +27,11 @@ from views.route_view import get_route_lookup
 # 「単発ルート変更」モード用シート
 # ==========================================
 # TAB1・TAB2用（申請〜承認）
-SR_TARGET_SHEET_URL = "https://docs.google.com/spreadsheets/d/1wphBZ_xRGNhy6Sc_TMzdCMrveJtdYKuybueIVXksVmA/edit?gid=1712868005#gid=1712868005"
-SR_TARGET_SHEET_CSV = "https://docs.google.com/spreadsheets/d/1wphBZ_xRGNhy6Sc_TMzdCMrveJtdYKuybueIVXksVmA/gviz/tq?tqx=out:csv&gid=1712868005"
+SR_TARGET_SHEET_URL = "https://docs.google.com/spreadsheets/d/1IeHd44h8DLVQ5lfzrUfOqQTeCqwKZxyTZncsx5zmIKI/edit?gid=286281139#gid=286281139"
+SR_TARGET_SHEET_CSV = "https://docs.google.com/spreadsheets/d/1IeHd44h8DLVQ5lfzrUfOqQTeCqwKZxyTZncsx5zmIKI/gviz/tq?tqx=out:csv&gid=286281139"
 # TAB3・TAB4用（転記〜チェック）
-SR_DEST_SHEET_URL = "https://docs.google.com/spreadsheets/d/16oxBVjnVefhpuPiodpH8jWzjjZ3Vp_tFbcOkpizU5zk/edit?gid=640102641#gid=640102641"
-SR_DEST_SHEET_CSV = "https://docs.google.com/spreadsheets/d/16oxBVjnVefhpuPiodpH8jWzjjZ3Vp_tFbcOkpizU5zk/gviz/tq?tqx=out:csv&gid=640102641"
+SR_DEST_SHEET_URL = "https://docs.google.com/spreadsheets/d/1SYJ5WlSZku_mSJSH803kKNEe4zMQL6UJ0UdXxx6N4aA/edit?gid=1154501548#gid=1154501548"
+SR_DEST_SHEET_CSV = "https://docs.google.com/spreadsheets/d/1SYJ5WlSZku_mSJSH803kKNEe4zMQL6UJ0UdXxx6N4aA/gviz/tq?tqx=out:csv&gid=1154501548"
 
 # 単発ルート変更：列インデックス（0始まり）
 # A タイムスタンプ, B 担当者(申請者), C 顧客コード, D 顧客名, E 加盟店, F 加盟店コード,
@@ -56,7 +56,7 @@ SR_COL = {
 }
 
 # 「単発ルート変更」モードTAB5用：加盟店別 印刷フォーマットのスプレッドシート（同じブック内・別タブ）
-SR_PRINT_SHEET_GID = "1222824394"
+SR_PRINT_SHEET_GID = "1791720150"
 SR_PRINT_SHEET_URL = f"https://docs.google.com/spreadsheets/d/{PRINT_SHEET_ID}/edit?gid={SR_PRINT_SHEET_GID}#gid={SR_PRINT_SHEET_GID}"
 # 1ページに4件まで配置。各件の起点行（A列）：1件目=4, 2件目=15, 3件目=26, 4件目=38（ルート変更と同じテンプレート構成）
 SR_PRINT_BASE_ROWS = [4, 15, 26, 38]

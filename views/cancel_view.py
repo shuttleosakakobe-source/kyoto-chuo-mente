@@ -31,11 +31,11 @@ CX_MODE_NAME = "解約"
 # 「解約のメンテナンス」モード用シート
 # ==========================================
 # TAB1・TAB2用（申請〜承認）
-CX_TARGET_SHEET_URL = "https://docs.google.com/spreadsheets/d/1wphBZ_xRGNhy6Sc_TMzdCMrveJtdYKuybueIVXksVmA/edit?gid=1701467342#gid=1701467342"
-CX_TARGET_SHEET_CSV = "https://docs.google.com/spreadsheets/d/1wphBZ_xRGNhy6Sc_TMzdCMrveJtdYKuybueIVXksVmA/gviz/tq?tqx=out:csv&gid=1701467342"
+CX_TARGET_SHEET_URL = "https://docs.google.com/spreadsheets/d/1IeHd44h8DLVQ5lfzrUfOqQTeCqwKZxyTZncsx5zmIKI/edit?gid=48515062#gid=48515062"
+CX_TARGET_SHEET_CSV = "https://docs.google.com/spreadsheets/d/1IeHd44h8DLVQ5lfzrUfOqQTeCqwKZxyTZncsx5zmIKI/gviz/tq?tqx=out:csv&gid=48515062"
 # TAB3・TAB4用（転記〜チェック）
-CX_DEST_SHEET_URL = "https://docs.google.com/spreadsheets/d/16oxBVjnVefhpuPiodpH8jWzjjZ3Vp_tFbcOkpizU5zk/edit?gid=2129132264#gid=2129132264"
-CX_DEST_SHEET_CSV = "https://docs.google.com/spreadsheets/d/16oxBVjnVefhpuPiodpH8jWzjjZ3Vp_tFbcOkpizU5zk/gviz/tq?tqx=out:csv&gid=2129132264"
+CX_DEST_SHEET_URL = "https://docs.google.com/spreadsheets/d/1SYJ5WlSZku_mSJSH803kKNEe4zMQL6UJ0UdXxx6N4aA/edit?gid=1754362072#gid=1754362072"
+CX_DEST_SHEET_CSV = "https://docs.google.com/spreadsheets/d/1SYJ5WlSZku_mSJSH803kKNEe4zMQL6UJ0UdXxx6N4aA/gviz/tq?tqx=out:csv&gid=1754362072"
 
 # 解約のメンテナンス：列インデックス（0始まり）
 # A タイムスタンプ, B 担当者(申請者), C 顧客コード, D 顧客名, E 加盟店, F 加盟店コード,
@@ -58,7 +58,7 @@ CX_COL = {
 }
 
 # 「解約のメンテナンス」モードTAB5用：加盟店別 印刷フォーマットのスプレッドシート（同じブック内・別タブ）
-CX_PRINT_SHEET_GID = "2137607944"
+CX_PRINT_SHEET_GID = "383277195"
 CX_PRINT_SHEET_URL = f"https://docs.google.com/spreadsheets/d/{PRINT_SHEET_ID}/edit?gid={CX_PRINT_SHEET_GID}#gid={CX_PRINT_SHEET_GID}"
 # 1ページに5件まで配置。各件の起点行（A列、店名/顧客名/責任者/処理者の行）：
 # 1件目=4, 2件目=13, 3件目=22, 4件目=31, 5件目=40（実テンプレートをクリックして確認：ブロックの高さは9行で均一）
