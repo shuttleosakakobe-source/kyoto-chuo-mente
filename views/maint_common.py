@@ -27,14 +27,10 @@ CONTRACT_COL_CUST_CODE = 0
 CONTRACT_WEEK_COLS = [12, 13, 14, 15]  # M, N, O, P → 週1, 週2, 週3, 週4
 
 # ルート担当表（日付 × 担当者のマトリクス。A列=日付、B列=曜日、C列=基本ルート、
-# D列以降＝担当者ごとの列で、見出しがその人の氏名、2行目のセルの値が担当者コード、
-# 3行目以降のセルの値がその日その人が担当する実際のルートコード）。管理職チェックで、
-# 申請のルートコード・納品日・担当者がこの表と一致しているかを確認するために使う。
-# 💡 kensaku（神戸中央店版）・campaign-tally・sales-tallyと共通のログイン情報
-# スプレッドシート内の「ルート」シートを参照する（神戸・京都双方の担当者が同じ表に
-# まとまっているため）。京都中央店専用のマスタデータ側の同名シートは、見出し行のみで
-# データが入っていない未使用の複製だったため参照しない。
-ROUTE_ROSTER_CSV = "https://docs.google.com/spreadsheets/d/1AkMb1J2m3VZAIyMCKmr3T3E8-kJB0BDDdWQJuEn7YGc/gviz/tq?tqx=out:csv&gid=1244262789"
+# D列以降＝担当者ごとの列で、見出しがその人の氏名、セルの値がその日その人が担当する
+# 実際のルートコード）。管理職チェックで、申請のルートコード・納品日・担当者が
+# この表と一致しているかを確認するために使う。
+ROUTE_ROSTER_CSV = "https://docs.google.com/spreadsheets/d/1psNFcJnLEtKA5aV8L1S2lz1Lf43CbMtHgK3wiYQjm3M/gviz/tq?tqx=out:csv&gid=1244262789"
 ROUTE_ROSTER_STAFF_COL_START = 3  # D列（0始まり）から担当者ごとの列が始まる
 
 # 業務担当コメント通知用シート（TAB3「業務担当」で、差戻しとは別に申請者への連絡コメントを
@@ -285,39 +281,6 @@ def get_route_dates_for_code(route_code):
         found_dates.add(candidate)
 
     return [d.strftime("%Y/%m/%d") for d in sorted(found_dates)]
-
-
-def get_staff_by_route_code(route_code):
-    """変更後ルートコード（5桁＝基本ルート2桁＋担当者コード3桁）の下3桁を、
-    ルート担当表（ROUTE_ROSTER_CSV）の2行目（担当者コード行）と照合し、
-    一致した列の1行目（担当者名）・2行目（担当者コード）を返す。
-    「変更後ルート」を入力した時点で、ルートコード検索なしに担当者コード・担当者名を
-    自動入力できるようにするために使う（ルート変更モードのTAB1）。
-    戻り値: (担当者コード, 担当者名, エラー理由) のタプル。
-    成功時はエラー理由=""。見つからない・読み込めない等で失敗した場合は
-    担当者コード・担当者名=""とし、エラー理由に具体的な原因を入れる
-    （呼び出し側で画面に表示し、「反応しない」ように見えるのを防ぐため）。"""
-    route_code = str(route_code).strip()
-    if len(route_code) < 3:
-        return "", "", "ルートコードが短すぎます（3桁以上の数字が必要です）"
-    staff_code_candidate = route_code[-3:]
-
-    try:
-        df = read_csv_cached(ROUTE_ROSTER_CSV, header=None)
-    except Exception as e:
-        return "", "", f"ルート担当表の読み込みに失敗しました（{e}）"
-    if df.empty or len(df) < 2:
-        return "", "", "ルート担当表にデータがありません"
-
-    header = df.iloc[0]
-    code_row = df.iloc[1]
-    for col_idx in range(ROUTE_ROSTER_STAFF_COL_START, len(code_row)):
-        cell = code_row.iloc[col_idx]
-        if pd.notna(cell) and str(cell).strip().zfill(3) == staff_code_candidate.zfill(3):
-            name = str(header.iloc[col_idx]).strip() if col_idx < len(header) and pd.notna(header.iloc[col_idx]) else ""
-            code = str(cell).strip()
-            return code, name, ""
-    return "", "", f"担当者コード「{staff_code_candidate}」に一致する担当者がルート担当表に見つかりませんでした"
 
 
 def send_staff_comment(mode_name, cust_code, cust_name, applicant, comment, staff_name, extra_recipient=None):
