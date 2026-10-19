@@ -487,13 +487,23 @@ def render_contract_change_tabs():
         render_tab1_notifications_section(CC_MODE_NAME)
         with st.expander("➕ 新規申請フォームを開く", expanded=True):
 
-            col_search_input, col_search_btn = st.columns([4, 1])
+            col_search_input, col_search_btn, col_search_clear = st.columns([4, 1, 1])
             cust_code_input = col_search_input.text_input(
                 "🔍 顧客コード入力",
                 value=st.session_state["cc_searched_ccode"],
                 key=f"cc_cust_code_search{rclear}"
             )
             btn_search = col_search_btn.button("🔍 検索", use_container_width=True, type="secondary", key=f"cc_search_btn{rclear}")
+            btn_search_clear = col_search_clear.button("✖️ クリア", use_container_width=True, key=f"cc_cust_code_clear{rclear}")
+
+            if btn_search_clear:
+                st.session_state["cc_searched_ccode"] = ""
+                st.session_state.pop(f"cc_cust_code_search{rclear}", None)
+                st.session_state.pop(f"cc_ccode{rclear}", None)
+                st.session_state.pop(f"cc_sname{rclear}", None)
+                st.session_state.pop(f"cc_cname{rclear}", None)
+                st.session_state.pop(f"cc_scode{rclear}", None)
+                st.rerun()
 
             if btn_search:
                 if cust_code_input:
@@ -544,7 +554,18 @@ def render_contract_change_tabs():
             total_before = 0.0
             total_after = 0.0
 
+            # 💡 商品入力欄は最初は1件だけ表示し、「➕ 商品を追加」で1件ずつ増やす
+            #    （最大5件まるごと表示すると、1件だけ変更したい時でも画面が長くなり
+            #    入力しづらいため）。
+            cc_visible_key = f"cc_new_visible_rows{rclear}"
+            if cc_visible_key not in st.session_state:
+                st.session_state[cc_visible_key] = 1
+            cc_visible_rows = st.session_state[cc_visible_key]
+
             for n in range(CC_ITEM_COUNT):
+                if n >= cc_visible_rows:
+                    items_data.append({f: "" for f in CC_ITEM_FIELDS})
+                    continue
                 st.markdown(f"**商品 {n + 1}**")
 
                 def _make_before_cb(_n=n, _rclear=rclear):
@@ -639,6 +660,11 @@ def render_contract_change_tabs():
                 total_after += calc_cc_amount(after_price, after_cycle, after_a, after_b, after_c, after_d)
 
                 st.write("---")
+
+            if cc_visible_rows < CC_ITEM_COUNT:
+                if st.button("➕ 商品を追加", key=f"cc_add_row{rclear}"):
+                    st.session_state[cc_visible_key] = cc_visible_rows + 1
+                    st.rerun()
 
             amount_diff = total_after - total_before
             m1, m2, m3 = st.columns(3)
@@ -908,7 +934,8 @@ def render_contract_change_tabs():
                                         "row_index": row_id,
                                         "updated_row": updated_row
                                     }
-                                    res = post_to_gas(payload)
+                                    with st.spinner("処理中..."):
+                                        res = post_to_gas(payload)
                                     if res.get("status") == "success":
                                         # 💡 差戻しの場合、申請者本人にも気付けるよう通知する
                                         # （以前は承認者・業務担当には通知が届いても、申請者

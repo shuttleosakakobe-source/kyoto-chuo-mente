@@ -334,13 +334,23 @@ def render_delivery_qty_change_tabs():
         render_tab1_notifications_section(DQ_MODE_NAME)
         with st.expander("➕ 新規申請フォームを開く", expanded=True):
 
-            col_search_input, col_search_btn = st.columns([4, 1])
+            col_search_input, col_search_btn, col_search_clear = st.columns([4, 1, 1])
             cust_code_input = col_search_input.text_input(
                 "🔍 顧客コード入力",
                 value=st.session_state["dq_searched_ccode"],
                 key=f"dq_cust_code_search{rclear}"
             )
             btn_search = col_search_btn.button("🔍 検索", use_container_width=True, type="secondary", key=f"dq_search_btn{rclear}")
+            btn_search_clear = col_search_clear.button("✖️ クリア", use_container_width=True, key=f"dq_cust_code_clear{rclear}")
+
+            if btn_search_clear:
+                st.session_state["dq_searched_ccode"] = ""
+                st.session_state.pop(f"dq_cust_code_search{rclear}", None)
+                st.session_state.pop(f"dq_ccode{rclear}", None)
+                st.session_state.pop(f"dq_sname{rclear}", None)
+                st.session_state.pop(f"dq_cname{rclear}", None)
+                st.session_state.pop(f"dq_scode{rclear}", None)
+                st.rerun()
 
             if btn_search:
                 if cust_code_input:
@@ -486,7 +496,18 @@ def render_delivery_qty_change_tabs():
 
             items_data = []
 
+            # 💡 商品入力欄は最初は1件だけ表示し、「➕ 商品を追加」で1件ずつ増やす
+            #    （最大5件まるごと表示すると、1件だけ変更したい時でも画面が長くなり
+            #    入力しづらいため）。
+            dq_visible_key = f"dq_new_visible_rows{rclear}"
+            if dq_visible_key not in st.session_state:
+                st.session_state[dq_visible_key] = 1
+            dq_visible_rows = st.session_state[dq_visible_key]
+
             for n in range(DQ_ITEM_COUNT):
+                if n >= dq_visible_rows:
+                    items_data.append({f: "" for f in DQ_ITEM_FIELDS})
+                    continue
                 st.markdown(f"**商品 {n + 1}**")
 
                 def _make_pick_cb(_n=n, _rclear=rclear):
@@ -535,6 +556,11 @@ def render_delivery_qty_change_tabs():
                 })
 
                 st.write("---")
+
+            if dq_visible_rows < DQ_ITEM_COUNT:
+                if st.button("➕ 商品を追加", key=f"dq_add_row{rclear}"):
+                    st.session_state[dq_visible_key] = dq_visible_rows + 1
+                    st.rerun()
 
             with st.form("dq_submit_form"):
                 st.form_submit_button("（Enterキー無効化用）", disabled=True, use_container_width=True)
@@ -800,7 +826,8 @@ def render_delivery_qty_change_tabs():
                                         "row_index": row_id,
                                         "updated_row": updated_row
                                     }
-                                    res = post_to_gas(payload)
+                                    with st.spinner("処理中..."):
+                                        res = post_to_gas(payload)
                                     if res.get("status") == "success":
                                         # 💡 差戻しの場合、申請者本人にも気付けるよう通知する
                                         # （以前は承認者・業務担当には通知が届いても、申請者

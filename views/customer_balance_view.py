@@ -314,13 +314,23 @@ def render_customer_balance_correction_tabs():
         render_tab1_notifications_section(KZ_MODE_NAME)
         with st.expander("➕ 新規申請フォームを開く", expanded=True):
 
-            col_search_input, col_search_btn = st.columns([4, 1])
+            col_search_input, col_search_btn, col_search_clear = st.columns([4, 1, 1])
             cust_code_input = col_search_input.text_input(
                 "🔍 顧客コード入力",
                 value=st.session_state["kz_searched_ccode"],
                 key=f"kz_cust_code_search{rclear}"
             )
             btn_search = col_search_btn.button("🔍 検索", use_container_width=True, type="secondary", key=f"kz_search_btn{rclear}")
+            btn_search_clear = col_search_clear.button("✖️ クリア", use_container_width=True, key=f"kz_cust_code_clear{rclear}")
+
+            if btn_search_clear:
+                st.session_state["kz_searched_ccode"] = ""
+                st.session_state.pop(f"kz_cust_code_search{rclear}", None)
+                st.session_state.pop(f"kz_ccode{rclear}", None)
+                st.session_state.pop(f"kz_sname{rclear}", None)
+                st.session_state.pop(f"kz_cname{rclear}", None)
+                st.session_state.pop(f"kz_scode{rclear}", None)
+                st.rerun()
 
             if btn_search:
                 if cust_code_input:
@@ -369,7 +379,18 @@ def render_customer_balance_correction_tabs():
 
             items_data = []
 
+            # 💡 商品入力欄は最初は1件だけ表示し、「➕ 商品を追加」で1件ずつ増やす
+            #    （最大5件まるごと表示すると、1件だけ変更したい時でも画面が長くなり
+            #    入力しづらいため）。
+            kz_visible_key = f"kz_new_visible_rows{rclear}"
+            if kz_visible_key not in st.session_state:
+                st.session_state[kz_visible_key] = 1
+            kz_visible_rows = st.session_state[kz_visible_key]
+
             for n in range(KZ_ITEM_COUNT):
+                if n >= kz_visible_rows:
+                    items_data.append({f: "" for f in KZ_ITEM_FIELDS})
+                    continue
                 st.markdown(f"**商品 {n + 1}**")
 
                 # ---- 商品記号はプルダウンから選ぶだけでなく、一覧に無い商品記号を直接入力する
@@ -399,6 +420,11 @@ def render_customer_balance_correction_tabs():
                 })
 
                 st.write("---")
+
+            if kz_visible_rows < KZ_ITEM_COUNT:
+                if st.button("➕ 商品を追加", key=f"kz_add_row{rclear}"):
+                    st.session_state[kz_visible_key] = kz_visible_rows + 1
+                    st.rerun()
 
             with st.form("kz_submit_form"):
                 st.form_submit_button("（Enterキー無効化用）", disabled=True, use_container_width=True)
@@ -657,7 +683,8 @@ def render_customer_balance_correction_tabs():
                                         "row_index": row_id,
                                         "updated_row": updated_row
                                     }
-                                    res = post_to_gas(payload)
+                                    with st.spinner("処理中..."):
+                                        res = post_to_gas(payload)
                                     if res.get("status") == "success":
                                         # 💡 差戻しの場合、申請者本人にも気付けるよう通知する
                                         # （以前は承認者・業務担当には通知が届いても、申請者
