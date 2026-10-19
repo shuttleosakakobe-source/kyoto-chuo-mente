@@ -12,14 +12,15 @@ from datetime import timezone, timedelta, datetime, date
 
 
 GAS_URL = "https://script.google.com/macros/s/AKfycby-P6VKAEPWVaLu1MRZeR1pIZYeN8s6yD3rsY1D3qDcvvgtpzR8WmazD2cdvHgZXIRV3A/exec"
-# 「顧客データ(京都)」シート（gid=291761179）に、京都中央店の実データが既に入っているため、
-# 空の「顧客データ(京都中央店)」（gid=127347205）ではなくこちらを参照する。
-CUSTOMER_MASTER_CSV = "https://docs.google.com/spreadsheets/d/1psNFcJnLEtKA5aV8L1S2lz1Lf43CbMtHgK3wiYQjm3M/gviz/tq?tqx=out:csv&gid=291761179"
-CUSTOMER_MASTER_SHEET_URL = "https://docs.google.com/spreadsheets/d/1psNFcJnLEtKA5aV8L1S2lz1Lf43CbMtHgK3wiYQjm3M/edit?gid=291761179#gid=291761179"
+# kensaku・campaign-tally・sales-tallyと共通のログイン情報スプレッドシート内、
+# 「顧客データ(京都)」シート（京都中央店の実データ）を参照する。
+CUSTOMER_MASTER_CSV = "https://docs.google.com/spreadsheets/d/1AkMb1J2m3VZAIyMCKmr3T3E8-kJB0BDDdWQJuEn7YGc/gviz/tq?tqx=out:csv&gid=291761179"
+CUSTOMER_MASTER_SHEET_URL = "https://docs.google.com/spreadsheets/d/1AkMb1J2m3VZAIyMCKmr3T3E8-kJB0BDDdWQJuEn7YGc/edit?gid=291761179#gid=291761179"
 
-# ご契約データ（顧客コードごとの契約週・曜日・担当者コードからルートコードを計算するための参照シート）
-CONTRACT_DATA_CSV = "https://docs.google.com/spreadsheets/d/1psNFcJnLEtKA5aV8L1S2lz1Lf43CbMtHgK3wiYQjm3M/gviz/tq?tqx=out:csv&gid=2011677989"
-CONTRACT_DATA_SHEET_URL = "https://docs.google.com/spreadsheets/d/1psNFcJnLEtKA5aV8L1S2lz1Lf43CbMtHgK3wiYQjm3M/edit?gid=2011677989#gid=2011677989"
+# ご契約データ（顧客コードごとの契約週・曜日・担当者コードからルートコードを計算するための参照シート）。
+# 同じ共通スプレッドシート内の「契約データ(京都)」シートを参照する。
+CONTRACT_DATA_CSV = "https://docs.google.com/spreadsheets/d/1AkMb1J2m3VZAIyMCKmr3T3E8-kJB0BDDdWQJuEn7YGc/gviz/tq?tqx=out:csv&gid=1075842706"
+CONTRACT_DATA_SHEET_URL = "https://docs.google.com/spreadsheets/d/1AkMb1J2m3VZAIyMCKmr3T3E8-kJB0BDDdWQJuEn7YGc/edit?gid=1075842706#gid=1075842706"
 
 # ご契約データシートの列（0始まり）：顧客コード(A)=0、担当者コード(E)=4、担当者名(F)=5、曜日(G)=6、契約週M/N/O/P=12/13/14/15
 CONTRACT_COL_CUST_CODE = 0
