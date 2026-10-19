@@ -41,7 +41,7 @@ kensaku（神戸中央店版）・campaign-tally・sales-tallyと同じユーザ
 の `GAS_URL` に以下のURLを設定済みです。
 
 ```
-https://script.google.com/macros/s/AKfycbyX7prYQJtvvb6d3qHyFcVK3XzcsGh36mTgoGRXDnxlBgCSVNBMRJYhKEOLUNBEpx0/exec
+https://script.google.com/macros/s/AKfycby-P6VKAEPWVaLu1MRZeR1pIZYeN8s6yD3rsY1D3qDcvvgtpzR8WmazD2cdvHgZXIRV3A/exec
 ```
 
 これで申請・承認・差戻しなどの書き込み操作が、京都中央店専用のGASプロジェクト経由で

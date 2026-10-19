@@ -11,7 +11,7 @@ import concurrent.futures
 from datetime import timezone, timedelta, datetime, date
 
 
-GAS_URL = "https://script.google.com/macros/s/AKfycbyX7prYQJtvvb6d3qHyFcVK3XzcsGh36mTgoGRXDnxlBgCSVNBMRJYhKEOLUNBEpx0/exec"
+GAS_URL = "https://script.google.com/macros/s/AKfycby-P6VKAEPWVaLu1MRZeR1pIZYeN8s6yD3rsY1D3qDcvvgtpzR8WmazD2cdvHgZXIRV3A/exec"
 # 「顧客データ(京都)」シート（gid=291761179）に、京都中央店の実データが既に入っているため、
 # 空の「顧客データ(京都中央店)」（gid=127347205）ではなくこちらを参照する。
 CUSTOMER_MASTER_CSV = "https://docs.google.com/spreadsheets/d/1psNFcJnLEtKA5aV8L1S2lz1Lf43CbMtHgK3wiYQjm3M/gviz/tq?tqx=out:csv&gid=291761179"
