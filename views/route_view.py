@@ -14,6 +14,7 @@ from views.maint_common import (
     render_section_pending_banner, render_tab_header_pending_css, handle_tab4_reject,
     render_tab2_own_approvals_section, render_tab2_notifications_section, render_tab3_own_transfers_section,
     render_internal_note, render_tab4_own_checks_section, is_already_transferred,
+    find_already_transferred_row_id,
     render_duplicate_transfer_guard, render_tab5_own_prints_section,
     render_tab1_notifications_section,
 )
@@ -448,6 +449,9 @@ def render_route_change_tabs():
                 d for v in route_after_list if v.strip() for d in get_route_dates_for_code(v)
             ))
 
+            if "rt_submitting" not in st.session_state:
+                st.session_state["rt_submitting"] = False
+
             with st.form("rt_submit_form"):
                 st.form_submit_button("（Enterキー無効化用）", disabled=True, use_container_width=True)
 
@@ -464,27 +468,36 @@ def render_route_change_tabs():
                 rt_reason = st.text_input("理由", key=f"rt_reason{rclear}")
                 rt_contact = st.text_input("連絡担当者", key=f"rt_contact{rclear}")
 
-                btn_submit = st.form_submit_button("新規申請を送信", type="primary")
+                btn_submit = st.form_submit_button(
+                    "新規申請を送信", type="primary",
+                    disabled=st.session_state["rt_submitting"],
+                )
 
                 if btn_submit:
                     if not customer_code.strip() or not route_after.strip():
                         st.error("⚠️ 「顧客コード」と「変更後ルート」は必須項目です。入力してください。")
                     else:
-                        now_str = datetime.now(JST).strftime("%Y/%m/%d %H:%M:%S")
+                        st.session_state["rt_submitting"] = True
+                        try:
+                            now_str = datetime.now(JST).strftime("%Y/%m/%d %H:%M:%S")
 
-                        full_row = [
-                            now_str, applicant, customer_code, customer_name, store_name, store_code,
-                            route_before, op_before_code, op_before_name,
-                            route_after, op_after_code, op_after_name, next_visit,
-                            rt_comment, rt_reason, rt_contact, "申請中", "", ""
-                        ]
+                            full_row = [
+                                now_str, applicant, customer_code, customer_name, store_name, store_code,
+                                route_before, op_before_code, op_before_name,
+                                route_after, op_after_code, op_after_name, next_visit,
+                                rt_comment, rt_reason, rt_contact, "申請中", "", ""
+                            ]
 
-                        payload = {
-                            "action": "SUBMIT_ROUTE_CHANGE",
-                            "target_sheet_url": ROUTE_TARGET_SHEET_URL,
-                            "full_row": full_row
-                        }
-                        res = post_to_gas(payload)
+                            payload = {
+                                "action": "SUBMIT_ROUTE_CHANGE",
+                                "target_sheet_url": ROUTE_TARGET_SHEET_URL,
+                                "full_row": full_row
+                            }
+                            with st.spinner("送信しています..."):
+                                res = post_to_gas(payload)
+                        finally:
+                            st.session_state["rt_submitting"] = False
+
                         if res.get("status") == "success":
                             st.toast("新規申請を送信しました！", icon="🎉")
                             st.session_state["route_searched_ccode"] = ""
@@ -529,6 +542,10 @@ def render_route_change_tabs():
                         reject_date = _v("reject_date") or (_v("approval_time") if _v("status_sign") == "差戻し" else "")
 
                         with st.expander(f"🔴 【差戻し】{_v('cust_name')} (行: {row_id}) | 理由: {rej_comment}"):
+                            rt_re_submitting_key = f"rt_re_submitting_{row_id}_{row_sig}"
+                            if rt_re_submitting_key not in st.session_state:
+                                st.session_state[rt_re_submitting_key] = False
+
                             with st.form(key=f"rt_resubmit_form_{row_id}_{row_sig}"):
                                 st.form_submit_button("（Enterキー無効化用）", disabled=True, use_container_width=True)
 
@@ -560,29 +577,41 @@ def render_route_change_tabs():
                                 edit_reason = st.text_input("理由", value=_v("reason"), key=f"rt_re_reason_{row_id}_{row_sig}")
                                 edit_contact = st.text_input("連絡担当者", value=_v("contact_person"), key=f"rt_re_contact_{row_id}_{row_sig}")
 
-                                btn_resubmit = st.form_submit_button("🔄 修正して再申請", type="primary")
-                                btn_withdraw = st.form_submit_button("🗑️ 削除（この申請を取り下げる）")
+                                btn_resubmit = st.form_submit_button(
+                                    "🔄 修正して再申請", type="primary",
+                                    disabled=st.session_state[rt_re_submitting_key],
+                                )
+                                btn_withdraw = st.form_submit_button(
+                                    "🗑️ 削除（この申請を取り下げる）",
+                                    disabled=st.session_state[rt_re_submitting_key],
+                                )
 
                                 if btn_resubmit:
                                     if not edit_cust_code.strip() or not edit_route_after.strip():
                                         st.error("⚠️ 「顧客コード」と「変更後ルート」は必須項目です。")
                                     else:
-                                        updated_row = [
-                                            _v("timestamp"), edit_applicant, edit_cust_code, edit_cust_name,
-                                            edit_store_name, edit_store_code,
-                                            edit_route_before, edit_op_before_code, edit_op_before_name,
-                                            edit_route_after, edit_op_after_code, edit_op_after_name, edit_next_visit,
-                                            edit_comment, edit_reason, edit_contact, "申請中", "", "",
-                                            rejector_name, reject_date,
-                                        ]
+                                        st.session_state[rt_re_submitting_key] = True
+                                        try:
+                                            updated_row = [
+                                                _v("timestamp"), edit_applicant, edit_cust_code, edit_cust_name,
+                                                edit_store_name, edit_store_code,
+                                                edit_route_before, edit_op_before_code, edit_op_before_name,
+                                                edit_route_after, edit_op_after_code, edit_op_after_name, edit_next_visit,
+                                                edit_comment, edit_reason, edit_contact, "申請中", "", "",
+                                                rejector_name, reject_date,
+                                            ]
 
-                                        payload = {
-                                            "action": "RESUBMIT_ROUTE_CHANGE",
-                                            "target_sheet_url": ROUTE_TARGET_SHEET_URL,
-                                            "row_index": row_id,
-                                            "updated_row": updated_row
-                                        }
-                                        res = post_to_gas(payload)
+                                            payload = {
+                                                "action": "RESUBMIT_ROUTE_CHANGE",
+                                                "target_sheet_url": ROUTE_TARGET_SHEET_URL,
+                                                "row_index": row_id,
+                                                "updated_row": updated_row
+                                            }
+                                            with st.spinner("送信しています..."):
+                                                res = post_to_gas(payload)
+                                        finally:
+                                            st.session_state[rt_re_submitting_key] = False
+
                                         if res.get("status") == "success":
                                             if rejector_name:
                                                 send_staff_comment(
@@ -597,23 +626,29 @@ def render_route_change_tabs():
                                             st.error(f"処理に失敗しました: {res.get('message')}")
 
                                 elif btn_withdraw:
-                                    withdrawn_row = [
-                                        _v("timestamp"), _v("applicant"), _v("cust_code"), _v("cust_name"),
-                                        _v("store_name"), _v("store_code"),
-                                        _v("route_before"), _v("op_before_code"), _v("op_before_name"),
-                                        _v("route_after"), _v("op_after_code"), _v("op_after_name"), _v("next_visit"),
-                                        _v("comment"), _v("reason"), _v("contact_person"),
-                                        "削除", datetime.now(JST).strftime("%Y/%m/%d %H:%M:%S"), "",
-                                        rejector_name, reject_date,
-                                    ]
+                                    st.session_state[rt_re_submitting_key] = True
+                                    try:
+                                        withdrawn_row = [
+                                            _v("timestamp"), _v("applicant"), _v("cust_code"), _v("cust_name"),
+                                            _v("store_name"), _v("store_code"),
+                                            _v("route_before"), _v("op_before_code"), _v("op_before_name"),
+                                            _v("route_after"), _v("op_after_code"), _v("op_after_name"), _v("next_visit"),
+                                            _v("comment"), _v("reason"), _v("contact_person"),
+                                            "削除", datetime.now(JST).strftime("%Y/%m/%d %H:%M:%S"), "",
+                                            rejector_name, reject_date,
+                                        ]
 
-                                    payload = {
-                                        "action": "DELETE_ROUTE_CHANGE",
-                                        "target_sheet_url": ROUTE_TARGET_SHEET_URL,
-                                        "row_index": row_id,
-                                        "updated_row": withdrawn_row,
-                                    }
-                                    res = post_to_gas(payload)
+                                        payload = {
+                                            "action": "DELETE_ROUTE_CHANGE",
+                                            "target_sheet_url": ROUTE_TARGET_SHEET_URL,
+                                            "row_index": row_id,
+                                            "updated_row": withdrawn_row,
+                                        }
+                                        with st.spinner("処理中..."):
+                                            res = post_to_gas(payload)
+                                    finally:
+                                        st.session_state[rt_re_submitting_key] = False
+
                                     if res.get("status") == "success":
                                         if rejector_name:
                                             send_staff_comment(
@@ -666,6 +701,10 @@ def render_route_change_tabs():
                             return str(r.iloc[i]) if len(r) > i and pd.notna(r.iloc[i]) else ""
 
                         with st.expander(f"⏳ 【承認待ち】{_v('cust_name')}（{_v('cust_code')}） | 行: {row_id}"):
+                            rt_mgr_submitting_key = f"rt_mgr_submitting_{row_id}_{row_sig}"
+                            if rt_mgr_submitting_key not in st.session_state:
+                                st.session_state[rt_mgr_submitting_key] = False
+
                             with st.form(key=f"rt_mgr_edit_form_{row_id}_{row_sig}"):
                                 st.form_submit_button("（Enterキー無効化用）", disabled=True, use_container_width=True)
 
@@ -699,41 +738,55 @@ def render_route_change_tabs():
                                 mgr_comment = st.text_input("管理職コメント / 差戻し理由", key=f"rt_mgr_com_{row_id}_{row_sig}")
 
                                 col_app, col_rej, col_del = st.columns(3)
-                                btn_approve = col_app.form_submit_button("✅ 承認（変更内容を反映）", type="primary", use_container_width=True)
-                                btn_reject = col_rej.form_submit_button("↩️ 差戻し", use_container_width=True)
-                                btn_delete = col_del.form_submit_button("🗑️ 削除", use_container_width=True)
+                                btn_approve = col_app.form_submit_button(
+                                    "✅ 承認（変更内容を反映）", type="primary", use_container_width=True,
+                                    disabled=st.session_state[rt_mgr_submitting_key],
+                                )
+                                btn_reject = col_rej.form_submit_button(
+                                    "↩️ 差戻し", use_container_width=True,
+                                    disabled=st.session_state[rt_mgr_submitting_key],
+                                )
+                                btn_delete = col_del.form_submit_button(
+                                    "🗑️ 削除", use_container_width=True,
+                                    disabled=st.session_state[rt_mgr_submitting_key],
+                                )
 
                                 mgr_name = st.session_state["user_name"]
                                 now_str = datetime.now(JST).strftime("%Y/%m/%d %H:%M:%S")
 
                                 if btn_approve or btn_reject or btn_delete:
-                                    updated_row = [
-                                        _v("timestamp"), edit_app, edit_ccode, edit_cname,
-                                        edit_sname, edit_scode,
-                                        edit_rbefore, edit_obefore_code, edit_obefore_name,
-                                        edit_rafter, edit_oafter_code, edit_oafter_name, edit_nvisit,
-                                        edit_comment, edit_reason, edit_contact
-                                    ]
+                                    st.session_state[rt_mgr_submitting_key] = True
+                                    try:
+                                        updated_row = [
+                                            _v("timestamp"), edit_app, edit_ccode, edit_cname,
+                                            edit_sname, edit_scode,
+                                            edit_rbefore, edit_obefore_code, edit_obefore_name,
+                                            edit_rafter, edit_oafter_code, edit_oafter_name, edit_nvisit,
+                                            edit_comment, edit_reason, edit_contact
+                                        ]
 
-                                    action_type = ""
-                                    if btn_approve:
-                                        action_type = "APPROVE_ROUTE_CHANGE"
-                                        updated_row.extend([mgr_name, now_str, mgr_comment, "", ""])
-                                    elif btn_reject:
-                                        action_type = "REJECT_ROUTE_CHANGE"
-                                        updated_row.extend(["差戻し", now_str, mgr_comment, mgr_name, now_str])
-                                    elif btn_delete:
-                                        action_type = "DELETE_ROUTE_CHANGE"
-                                        updated_row.extend(["削除", now_str, mgr_comment, "", ""])
+                                        action_type = ""
+                                        if btn_approve:
+                                            action_type = "APPROVE_ROUTE_CHANGE"
+                                            updated_row.extend([mgr_name, now_str, mgr_comment, "", ""])
+                                        elif btn_reject:
+                                            action_type = "REJECT_ROUTE_CHANGE"
+                                            updated_row.extend(["差戻し", now_str, mgr_comment, mgr_name, now_str])
+                                        elif btn_delete:
+                                            action_type = "DELETE_ROUTE_CHANGE"
+                                            updated_row.extend(["削除", now_str, mgr_comment, "", ""])
 
-                                    payload = {
-                                        "action": action_type,
-                                        "target_sheet_url": ROUTE_TARGET_SHEET_URL,
-                                        "row_index": row_id,
-                                        "updated_row": updated_row
-                                    }
-                                    with st.spinner("処理中..."):
-                                        res = post_to_gas(payload)
+                                        payload = {
+                                            "action": action_type,
+                                            "target_sheet_url": ROUTE_TARGET_SHEET_URL,
+                                            "row_index": row_id,
+                                            "updated_row": updated_row
+                                        }
+                                        with st.spinner("処理中..."):
+                                            res = post_to_gas(payload)
+                                    finally:
+                                        st.session_state[rt_mgr_submitting_key] = False
+
                                     if res.get("status") == "success":
                                         # 💡 差戻しの場合、申請者本人にも気付けるよう通知する
                                         # （以前は承認者・業務担当には通知が届いても、申請者
@@ -842,6 +895,7 @@ def render_route_change_tabs():
                             render_duplicate_transfer_guard(
                                 f"rt_dup_pending_{row_id}", row, row_id, ROUTE_COL,
                                 ROUTE_TARGET_SHEET_URL, "APPROVE_ROUTE_CHANGE",
+                                dest_sheet_url=ROUTE_DEST_SHEET_URL, update_check_action="UPDATE_ROUTE_CHECK",
                             )
 
                             with st.form(key=f"rt_transfer_form_{row_id}_{row_sig}"):
@@ -865,22 +919,26 @@ def render_route_change_tabs():
                                     #    重複登録されるのを防ぐ（印刷時に同じ顧客が複数スロットに
                                     #    表示される不具合の原因だった）。転記直前に最新状態を読み直す。
                                     read_csv_cached.clear()
+                                    clean_base_row = [
+                                        "" if pd.isna(row.iloc[i]) else str(row.iloc[i])
+                                        for i in range(ROUTE_COL["status_sign"] + 3)
+                                    ]
+                                    if staff_comment_val.strip():
+                                        _note = f"【業務担当】{staff_comment_val.strip()}"
+                                        _orig_note = clean_base_row[ROUTE_COL["approval_comment"]]
+                                        clean_base_row[ROUTE_COL["approval_comment"]] = (
+                                            f"{_orig_note}\n{_note}" if _orig_note.strip() else _note
+                                        )
+                                    transfer_row = clean_base_row + [action_time, op_user]
+
                                     if is_already_transferred(ROUTE_DEST_SHEET_CSV, ROUTE_COL, _v("cust_code"), _v("timestamp")):
                                         st.session_state[f"rt_dup_pending_{row_id}"] = True
+                                        st.session_state[f"rt_dup_pending_{row_id}_destrow"] = find_already_transferred_row_id(
+                                            ROUTE_DEST_SHEET_CSV, ROUTE_COL, _v("cust_code"), _v("timestamp")
+                                        )
+                                        st.session_state[f"rt_dup_pending_{row_id}_transferrow"] = transfer_row
                                         st.rerun()
                                     else:
-                                        clean_base_row = [
-                                            "" if pd.isna(row.iloc[i]) else str(row.iloc[i])
-                                            for i in range(ROUTE_COL["status_sign"] + 3)
-                                        ]
-                                        if staff_comment_val.strip():
-                                            _note = f"【業務担当】{staff_comment_val.strip()}"
-                                            _orig_note = clean_base_row[ROUTE_COL["approval_comment"]]
-                                            clean_base_row[ROUTE_COL["approval_comment"]] = (
-                                                f"{_orig_note}\n{_note}" if _orig_note.strip() else _note
-                                            )
-                                        transfer_row = clean_base_row + [action_time, op_user]
-
                                         payload = {
                                             "action": "TRANSFER_ROUTE_TO_OPERATOR",
                                             "target_sheet_url": ROUTE_TARGET_SHEET_URL,

@@ -457,8 +457,7 @@ def _pending_flag_from_dfs(df_t, df_d, status_col, check_col, print_col, applica
 
 
 # 理由の文言（_pending_reasons_from_dfsが返す文字列の先頭）と、タブ見出しの色分け
-# （render_tab_header_pending_css）を揃えた対応表。差戻し（TAB1）だけは色の指定が
-# 無いため、既存の赤をそのまま使う。
+# （render_tab_header_pending_css）を揃えた対応表。
 PENDING_REASON_COLORS = [
     ("差戻し", "#e53935"),
     ("承認待ち", "#f1c40f"),
@@ -514,6 +513,64 @@ def render_section_pending_banner(label, count):
         f"🔴 {label}で未処理が{count}件あります</div>",
         unsafe_allow_html=True,
     )
+
+
+def render_top_rejection_alerts(mode_defs, pending_modes):
+    """メンテナンス業務トップ画面の一番上に、差戻しに関するアラートを表示する。
+    ①申請者本人向け：get_pending_modes()の結果（pending_modes）から「差戻し」の
+      理由があるモードを抜き出して表示する。これはSTAFF_COMMENT_SHEETの通知と違い
+      「確認しました」で消せるものではなく、申請者が実際に再申請・取り下げを行って
+      元データ（TARGET_SHEET）側の差戻しが解消されるまでずっと表示され続ける
+      （ユーザーが望む「未処理の間は出続けるアラート」そのもの）。
+    ②管理職向け：自分が承認した申請が、業務担当への差戻しやメンテナンスチェックでの
+      差戻しになったときのお知らせ。既存のSTAFF_COMMENT_SHEET通知の仕組み（コメント文に
+      必ず「差戻し」という文言が入る）を利用し、通常の業務連絡コメントと区別して
+      ここにまとめて表示する（確認ボタンを押すまで表示され続ける）。"""
+    mode_label = {mk: label for mk, label, *_rest in mode_defs}
+
+    # 💡 get_pending_modes()は辞書を返す仕様だが、呼び出し元のテスト等で簡易的に
+    #    set()等が渡されることがあるため、辞書以外は「対応待ちなし」として安全に扱う。
+    my_rejection_items = [
+        f"{mode_label.get(mk, mk)}（{reason}）"
+        for mk, reasons in (pending_modes.items() if isinstance(pending_modes, dict) else [])
+        for reason in reasons
+        if reason.startswith("差戻し")
+    ]
+    if my_rejection_items:
+        st.markdown(
+            "<div style='border:3px solid #e53935;border-radius:10px;padding:10px 16px;"
+            "background:#fff5f5;margin-bottom:12px;color:#b91c1c;font-weight:700;'>"
+            f"⚠️ 差戻しされた申請があります：{'、'.join(my_rejection_items)}　"
+            "該当するモードを開いて再申請・修正してください。</div>",
+            unsafe_allow_html=True,
+        )
+
+    user_name = str(st.session_state.get("user_name", "")).strip()
+    mgr_notices = []
+    if user_name:
+        mgr_notices = [c for c in get_unconfirmed_staff_comments(user_name) if "差戻し" in c["comment"]]
+        if mgr_notices:
+            with st.container(border=True):
+                st.markdown(
+                    f"<div style='color:#b91c1c;font-weight:700;'>"
+                    f"⚠️ 自分が承認した申請が差戻しになりました（{len(mgr_notices)}件）</div>",
+                    unsafe_allow_html=True,
+                )
+                for _c in mgr_notices:
+                    st.write(f"**{_c['mode_name']}** ｜ {_c['cust_name']}（{_c['cust_code']}） ｜ {_c['timestamp']}")
+                    st.caption(f"{_c['staff_name']}より")
+                    st.write(_c["comment"])
+                    if st.button("✅ 確認しました", key=f"confirm_mgr_rejection_{_c['row_index']}"):
+                        _res = confirm_staff_comment(_c["row_index"])
+                        if _res.get("status") == "success":
+                            st.toast("確認しました！", icon="✅")
+                            time.sleep(1)
+                            st.rerun()
+                        else:
+                            st.error(f"確認処理に失敗しました: {_res.get('message')}")
+
+    if my_rejection_items or mgr_notices:
+        st.write("---")
 
 
 def render_internal_note(note):
@@ -722,21 +779,77 @@ def is_already_transferred(dest_sheet_csv, col, cust_code, timestamp):
     return not matched.empty
 
 
-def render_duplicate_transfer_guard(session_key, row, row_id, col, target_sheet_url, approve_action):
+def find_already_transferred_row_id(dest_sheet_csv, col, cust_code, timestamp):
+    """is_already_transferred()と同じ条件（顧客コード＋タイムスタンプ）でDEST_SHEET側を
+    検索し、一致した行の実際のシート行番号（1始まり）を返す。一致しなければNone。
+    is_already_transferred()は真偽値しか返さないため、重複検出時に「上書きして終了」
+    （render_duplicate_transfer_guard参照）で上書き対象を特定するためにこちらを使う。"""
+    try:
+        df = read_csv_cached(dest_sheet_csv)
+    except Exception:
+        return None
+    if df.empty:
+        return None
+    cust_code_series = _safe_col_series(df, col["cust_code"])
+    timestamp_series = _safe_col_series(df, col["timestamp"])
+    matched = df[
+        (cust_code_series == str(cust_code).strip()) &
+        (timestamp_series == str(timestamp).strip())
+    ]
+    if matched.empty:
+        return None
+    return int(matched.index[0]) + 2
+
+
+def render_duplicate_transfer_guard(
+    session_key, row, row_id, col, target_sheet_url, approve_action,
+    dest_sheet_url=None, update_check_action=None,
+):
     """TAB3でis_already_transferred()が「転記済み」と検出した直後に呼ぶ。
-    以前は警告を出して中止するだけだったが、業務担当が「もう転記されている
-    なら、この申請はここで終わらせたい」というケースに対応できるよう、
-    「🗑️ 重複のため破棄して終了」ボタンも選択肢として表示する。
-    押された場合、実際の転記（DEST_SHEETへの追加）は行わず、TARGET_SHEET側の
-    status_signだけ「業務転記済」に書き換えて一覧から外す（他の列は一切変更
-    しない＝既に転記されている本物のデータには触れない）。
+    以前は「🗑️ 重複のため破棄して終了」で中止するだけだったが、業務担当が
+    「内容を直してから再度転記しようとしたら、もう転記済みだった」というケースにも
+    対応できるよう、「📝 既存データを上書きして終了」も選択肢として表示する。
+    - 破棄：実際の転記（DEST_SHEETへの追加）は行わず、TARGET_SHEET側のstatus_signだけ
+      「業務転記済」に書き換えて一覧から外す（他の列は一切変更しない＝既に転記されている
+      本物のデータには触れない）。
+    - 上書き：DEST_SHEET側の既存行（重複と判定された行）を、今回送信しようとした内容で
+      丸ごと上書きしたうえで、TARGET_SHEET側のstatus_signも「業務転記済」に書き換える。
+    上書きを使うには、呼び出し側が重複を検出した時点で、session_state[session_key]=True
+    に加えて以下もセットしておく必要がある（この関数自身では計算できないため）：
+      st.session_state[f"{session_key}_destrow"]      … DEST_SHEET上の上書き対象行番号
+      st.session_state[f"{session_key}_transferrow"]  … 上書きする内容（transfer_row）
+    またdest_sheet_url・update_check_action（UPDATE_◯◯_CHECK系のアクション名。DEST_SHEET
+    の指定行をupdated_rowで丸ごと上書きする、TAB4で使っているのと同じGAS側の処理を流用する）
+    も渡す必要がある。どれか欠けている場合は上書きボタンを出さず、従来通り破棄のみにする。
     呼び出し側は、重複を検出した時点でst.session_state[session_key]=Trueを
     セットしてからst.rerun()すること（st.form内のボタンから、form外に置く
     このボタンを次の描画で出すため）。"""
     if not st.session_state.get(session_key):
         return
-    st.warning("⚠️ この申請はすでに業務担当へ転記済みです。画面を更新するか、重複のため破棄してこの申請を終了できます。")
-    if st.button("🗑️ 重複のため破棄して終了（転記は行いません）", key=f"{session_key}_btn"):
+
+    dest_row_id = st.session_state.get(f"{session_key}_destrow")
+    transfer_row = st.session_state.get(f"{session_key}_transferrow")
+    can_overwrite = bool(dest_sheet_url and update_check_action and dest_row_id and transfer_row is not None)
+
+    def _clear_pending():
+        st.session_state.pop(session_key, None)
+        st.session_state.pop(f"{session_key}_destrow", None)
+        st.session_state.pop(f"{session_key}_transferrow", None)
+
+    if can_overwrite:
+        st.warning("⚠️ この申請はすでに業務担当へ転記済みです。画面を更新するか、重複のため破棄するか、最新の内容で上書きしてこの申請を終了できます。")
+    else:
+        st.warning("⚠️ この申請はすでに業務担当へ転記済みです。画面を更新するか、重複のため破棄してこの申請を終了できます。")
+
+    if can_overwrite:
+        col_discard, col_overwrite = st.columns(2)
+    else:
+        col_discard, col_overwrite = st.container(), None
+
+    if col_discard.button(
+        "🗑️ 重複のため破棄して終了（転記は行いません）", key=f"{session_key}_btn",
+        use_container_width=can_overwrite,
+    ):
         updated_row = ["" if pd.isna(v) else str(v) for v in row]
         while len(updated_row) < col["status_sign"] + 1:
             updated_row.append("")
@@ -748,13 +861,58 @@ def render_duplicate_transfer_guard(session_key, row, row_id, col, target_sheet_
             "updated_row": updated_row,
         })
         if res.get("status") == "success":
-            st.session_state.pop(session_key, None)
+            _clear_pending()
             read_csv_cached.clear()
             st.toast("重複していたため、転記せずにこの申請を終了しました。", icon="🗑️")
             time.sleep(1)
             st.rerun()
         else:
             st.error(f"処理に失敗しました: {res.get('message')}")
+
+    if can_overwrite and col_overwrite.button(
+        "📝 既存データを上書きして終了（再転記）", key=f"{session_key}_overwrite_btn",
+        use_container_width=True,
+    ):
+        # 💡 上書き対象のDEST_SHEET行は「差戻しで一度チェック済み扱いになった古い行」の
+        #    ことが多く、check_time/check_user/print_time（チェック日時・チェック者・印刷日時）
+        #    に前回サイクルの値が残っている。transfer_rowは通常の新規appendRow用に作られて
+        #    おり、これらの列までは含まない（モードによってはcheck_timeすら含まない）ため、
+        #    そのままsetValuesで上書きすると末尾の古い値が消えずに残ってしまい、せっかく
+        #    内容を上書きしても「チェック済み／印刷対象外」のまま扱われ、メンテナンス
+        #    チェック（TAB4）の未チェック一覧に出てこなくなる。print_time列までを明示的に
+        #    空欄で埋めてから上書きすることで、再チェック・再印刷の対象に正しく戻す。
+        overwrite_row = list(transfer_row)
+        pad_to = col.get("print_time")
+        if pad_to is not None:
+            while len(overwrite_row) <= pad_to:
+                overwrite_row.append("")
+        res1 = post_to_gas({
+            "action": update_check_action,
+            "target_sheet_url": dest_sheet_url,
+            "row_index": dest_row_id,
+            "updated_row": overwrite_row,
+        })
+        if res1.get("status") != "success":
+            st.error(f"上書きに失敗しました: {res1.get('message')}")
+        else:
+            updated_row = ["" if pd.isna(v) else str(v) for v in row]
+            while len(updated_row) < col["status_sign"] + 1:
+                updated_row.append("")
+            updated_row[col["status_sign"]] = "業務転記済"
+            res2 = post_to_gas({
+                "action": approve_action,
+                "target_sheet_url": target_sheet_url,
+                "row_index": row_id,
+                "updated_row": updated_row,
+            })
+            if res2.get("status") == "success":
+                _clear_pending()
+                read_csv_cached.clear()
+                st.toast("既存データを上書きして転記を完了しました。", icon="📝")
+                time.sleep(1)
+                st.rerun()
+            else:
+                st.error(f"処理に失敗しました: {res2.get('message')}")
 
 
 def handle_tab2_cancel_approval(row, row_id, col, target_sheet_url, resubmit_action):
@@ -1171,12 +1329,15 @@ def render_tab5_own_prints_section(mode_name, col, dest_sheet_csv, dest_sheet_ur
                     st.error(f"解除に失敗しました: {res.get('message')}")
 
 
-def render_tab_header_pending_css(target_csv, dest_csv, status_col, check_col, print_col, tab_visible_nums):
-    """TAB2（管理職チェック/承認待ち）=黄、TAB3（業務担当メンテナンス処理/転記待ち）=緑、
-    TAB4（メンテナンスチェック/未チェック）=赤、TAB5（加盟店別印刷/未印刷）=ピンクで、
-    それぞれ未処理がある場合だけ、そのタブの見出し（st.tabsのタブボタン自体）に
-    色付きの枠をつける。render_section_pending_bannerはタブの中身に出す文言、
-    こちらはタブを開く前から見出し自体の色でひと目でわかるようにするためのもの。
+def render_tab_header_pending_css(target_csv, dest_csv, status_col, check_col, print_col, tab_visible_nums, applicant_col=1):
+    """TAB1（メンテナンス/差戻し修正・差戻し）=赤、TAB2（管理職チェック/承認待ち）=黄、
+    TAB3（業務担当メンテナンス処理/転記待ち）=緑、TAB4（メンテナンスチェック/未チェック）=赤、
+    TAB5（加盟店別印刷/未印刷）=ピンクで、それぞれ未処理がある場合だけ、そのタブの見出し
+    （st.tabsのタブボタン自体）に色付きの枠をつける。render_section_pending_bannerはタブの
+    中身に出す文言、こちらはタブを開く前から見出し自体の色でひと目でわかるようにするためのもの。
+    💡 TAB1の差戻しは、ログイン中のユーザー（st.session_state の user_role / user_name）が
+    本人の申請分を持っている場合だけ対象にする（_pending_reasons_from_dfsと同じ絞り込み。
+    権限0は全員分を対象にする）。
     💡 st.tabsの各タブは個別のkeyを持てずCSSで直接狙えないため、実際に表示されている
     タブ番号の並び順（tab_visible_nums＝tab_visible()でフィルタ済みのもの）から、
     何番目のタブボタンか（nth-child）を逆算して当てる。権限によって表示されるタブの
@@ -1186,10 +1347,22 @@ def render_tab_header_pending_css(target_csv, dest_csv, status_col, check_col, p
     df_t = _fetch_csv_or_none(target_csv)
     df_d = _fetch_csv_or_none(dest_csv)
 
-    pending = {2: False, 3: False, 4: False, 5: False}
+    user_role = str(st.session_state.get("user_role", "")).strip()
+    if user_role.endswith(".0"):
+        user_role = user_role[:-2]
+    my_name = str(st.session_state.get("user_name", "")).strip()
+
+    pending = {1: False, 2: False, 3: False, 4: False, 5: False}
     try:
         if df_t is not None and not df_t.empty and len(df_t.columns) > status_col:
             status_series = df_t.iloc[:, status_col].astype(str).str.strip()
+
+            if user_role == "0":
+                pending[1] = bool((status_series == "差戻し").any())
+            elif my_name and len(df_t.columns) > applicant_col:
+                applicant_series = df_t.iloc[:, applicant_col].astype(str).str.strip()
+                pending[1] = bool(((status_series == "差戻し") & (applicant_series == my_name)).any())
+
             pending[2] = bool((status_series == "申請中").any())
             pending_transfer = (
                 (~df_t.iloc[:, status_col].isna()) &
@@ -1210,19 +1383,25 @@ def render_tab_header_pending_css(target_csv, dest_csv, status_col, check_col, p
     except Exception:
         pass
 
-    colors = {2: "#f1c40f", 3: "#22c55e", 4: "#e53935", 5: "#ec4899"}
+    colors = {1: "#e53935", 2: "#f1c40f", 3: "#22c55e", 4: "#e53935", 5: "#ec4899"}
     css_parts = []
     for tab_no, color in colors.items():
         if not pending[tab_no] or tab_no not in tab_visible_nums:
             continue
         position = tab_visible_nums.index(tab_no) + 1
-        # 💡 :nth-child ではなく :nth-of-type を使う。st.tabsのタブ一覧
-        # （div[data-baseweb="tab-list"]）には、選択中タブの下線などを描画する
-        # button以外の要素が混ざることがあり、:nth-childだと数がずれて
-        # 別のタブに色が付いてしまう不具合があった。:nth-of-typeなら
-        # button要素だけを数えるため、このズレが起きない。
+        # 💡 :nth-child ではなく :nth-of-type を使う。st.tabsのタブ一覧には、選択中タブの
+        # 下線などを描画する別要素が混ざることがあり、:nth-childだと数がずれて別のタブに
+        # 色が付いてしまう不具合があった。:nth-of-typeならタブ本体の要素だけを数えるため、
+        # このズレが起きない。
+        # 💡 StreamlitのバージョンによってタブのDOM構造が異なる（古いバージョンは
+        # button[data-baseweb="tab"]、新しいバージョン（react-aria化後）はdiv[role="tab"]
+        # [data-testid="stTab"]）ため、両方のセレクタを併記しておく。一致しない方は単に
+        # 何にもマッチしないだけなので無害（実際にこの不一致が原因で、Streamlitのバージョンが
+        # 上がった際にタブ見出しの色付けが丸ごと効かなくなる不具合が起きていたため、
+        # 両対応にして片方のStreamlitバージョンが変わっても追従できるようにしている）。
         css_parts.append(
-            f'div[data-baseweb="tab-list"] button[data-baseweb="tab"]:nth-of-type({position}) {{'
+            f'div[data-baseweb="tab-list"] button[data-baseweb="tab"]:nth-of-type({position}),'
+            f' div[role="tablist"] div[data-testid="stTab"]:nth-of-type({position}) {{'
             f' border: 3px solid {color} !important;'
             f' border-radius: 6px !important;'
             f' box-shadow: 0 0 0 1px {color} !important; }}'
