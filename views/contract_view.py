@@ -206,10 +206,14 @@ def calc_cc_amount(price, cycle, week_a, week_b, week_c, week_d):
 
 
 def _cc_sum4(week_a, week_b, week_c, week_d):
-    """A〜D週のうち0以外の納品数を「契約数」として文字列で返す（整数ならそのまま、それ以外は元の値を保持）"""
-    total = _cc_nonzero_qty(week_a, week_b, week_c, week_d)
-    if total == 0:
+    """A〜D週のうち0以外の納品数を「契約数」として文字列で返す（整数ならそのまま、それ以外は元の値を保持）。
+    💡 A〜Dが全て未入力（空欄）の場合だけ空文字を返す。以前はtotal==0（計算結果が0）の場合も
+    空文字にしていたため、A〜Dのどれかに意図的に「0」を入力しても契約数欄が空のままになり、
+    「0を入れたのに反映されない」ように見える不具合があった。どれか1つでも入力されていれば、
+    結果が0でもその値（"0"）をそのまま表示する。"""
+    if not any(str(v).strip() for v in (week_a, week_b, week_c, week_d)):
         return ""
+    total = _cc_nonzero_qty(week_a, week_b, week_c, week_d)
     return str(int(total)) if total == int(total) else str(total)
 
 
