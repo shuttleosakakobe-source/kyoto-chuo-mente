@@ -1,5 +1,6 @@
 """メンテナンス業務（商品発注／ルート変更／契約内容変更）で共通して使う定数・ヘルパー関数。
 route_view.py / contract_view.py / order_view.py から読み込まれる。"""
+import io
 import streamlit as st
 import pandas as pd
 import requests
@@ -101,8 +102,20 @@ def read_csv_cached(url, **kwargs):
     （各画面が毎回 st.cache_data.clear() でアプリ全体のキャッシュを巻き添えにして
     いたのを、この関数専用のキャッシュに置き換えることで解消する）。
     承認・差戻し・削除・転記など自分の操作の直後で確実に最新データが欲しい場合は、
-    read_csv_cached.clear() を呼んでからこの関数を呼び出す。"""
-    return pd.read_csv(url, dtype=str, **kwargs)
+    read_csv_cached.clear() を呼んでからこの関数を呼び出す。
+    💡 pd.read_csv(url)はタイムアウトを指定できず、通信状況が悪いとリクエストが
+    ハングしたまま返ってこなくなり、画面が「読み込み中」のまま固まって見える
+    原因になっていた。requests.getで明示的にタイムアウトを設定してから
+    pd.read_csvに渡すことで、一定時間で確実にエラーとして打ち切られるようにする。
+    💡 呼び出し側がstorage_options={"User-Agent": ...}を渡してくる場合がある
+    （元はfsspec経由でpd.read_csvがURLを直接開く際にヘッダーを渡すためのもの）。
+    ここではrequests.get自体のheadersとして使うため、kwargsから取り出して
+    pd.read_csvには渡さない（io.StringIOにはstorage_optionsを渡せないため）。"""
+    storage_options = kwargs.pop("storage_options", None)
+    headers = storage_options if isinstance(storage_options, dict) else None
+    response = requests.get(url, timeout=20, headers=headers)
+    response.raise_for_status()
+    return pd.read_csv(io.StringIO(response.text), dtype=str, **kwargs)
 
 
 def get_anthropic_client():
@@ -378,11 +391,12 @@ def _pending_reasons_from_dfs(df_t, df_d, status_col, check_col, print_col, appl
     💡 以前は会社全体のデータを見て、誰の・どの担当範囲の対応待ちでも無条件に赤枠にしていた
     （自分の管轄外の対応待ちでも赤枠が点いてしまっていた）。これを、対応待ちの種類ごとに
     「本来それに対応すべき人」にだけ赤枠が見えるよう絞り込む：
-    - 差戻し（要再修正・再申請）：その申請の担当者（申請者）本人のみ
+    - 差戻し（要再修正・再申請）：その申請の担当者（申請者）本人のみ（権限0含め例外なし。
+      差戻し修正タブ自体が常に申請者本人のみに絞り込んで表示するため、ここで権限0を
+      例外にすると「バナーは出るのに該当タブには何も無い」という不一致が起きる）
     - 申請中（要承認）：管理職（権限0・1）のみ
     - 承認済みだが未転記（要業務転記）／チェック未完了（要チェック）／
       チェック済みだが未印刷（要印刷）：業務担当（権限0・3）のみ
-    権限0（全権限）は、どの種類の対応待ちでも対象として見る。
     💡 「ボタンが赤いのに、見ているTABには何も残っていない」という混乱が繰り返し起きたため、
     単純なTrue/Falseではなく、どの種類が・何件該当したかのリストを返すようにしている
     （例: ["差戻し1件", "未チェック2件"]）。空リスト＝対応待ちなし。
@@ -391,7 +405,6 @@ def _pending_reasons_from_dfs(df_t, df_d, status_col, check_col, print_col, appl
     role = str(user_role).strip()
     if role.endswith(".0"):
         role = role[:-2]
-    is_all = role == "0"
     is_manager = role in {"0", "1"}
     is_operator = role in {"0", "3"}
     my_name = str(user_name).strip()
@@ -402,11 +415,14 @@ def _pending_reasons_from_dfs(df_t, df_d, status_col, check_col, print_col, appl
         if df_t is not None and not df_t.empty and len(df_t.columns) > status_col:
             status_series = df_t.iloc[:, status_col].astype(str).str.strip()
 
-            if is_all:
-                cnt = int((status_series == "差戻し").sum())
-                if cnt:
-                    reasons.append(f"差戻し{cnt}件")
-            elif my_name and len(df_t.columns) > applicant_col:
+            # 💡 差戻しは権限0（全権限）でも「自分が申請したものだけ」に絞る。
+            # 以前はis_all（権限0）のときだけ申請者を問わず全社分の件数をそのまま
+            # 数えていたため、他の人が申請して差し戻された件数までトップ画面の
+            # バナーに出てしまい、「差戻しがあると言われたのに、該当モードを開いても
+            # 何も表示されない（＝自分の申請ではないので差戻し修正タブには出ない）」
+            # という混乱の原因になっていた。差戻し修正タブ自体が常に申請者本人のみに
+            # 絞り込んでいる（route_view.py等）ため、バナー側もそれに合わせる。
+            if my_name and len(df_t.columns) > applicant_col:
                 applicant_series = df_t.iloc[:, applicant_col].astype(str).str.strip()
                 my_rejected = (status_series == "差戻し") & (applicant_series == my_name)
                 cnt = int(my_rejected.sum())
@@ -1337,7 +1353,8 @@ def render_tab_header_pending_css(target_csv, dest_csv, status_col, check_col, p
     中身に出す文言、こちらはタブを開く前から見出し自体の色でひと目でわかるようにするためのもの。
     💡 TAB1の差戻しは、ログイン中のユーザー（st.session_state の user_role / user_name）が
     本人の申請分を持っている場合だけ対象にする（_pending_reasons_from_dfsと同じ絞り込み。
-    権限0は全員分を対象にする）。
+    差戻し修正タブ自体が常に申請者本人のみに絞り込んで表示するため、権限0でも例外にせず
+    本人の申請分だけで判定する）。
     💡 st.tabsの各タブは個別のkeyを持てずCSSで直接狙えないため、実際に表示されている
     タブ番号の並び順（tab_visible_nums＝tab_visible()でフィルタ済みのもの）から、
     何番目のタブボタンか（nth-child）を逆算して当てる。権限によって表示されるタブの
@@ -1347,9 +1364,6 @@ def render_tab_header_pending_css(target_csv, dest_csv, status_col, check_col, p
     df_t = _fetch_csv_or_none(target_csv)
     df_d = _fetch_csv_or_none(dest_csv)
 
-    user_role = str(st.session_state.get("user_role", "")).strip()
-    if user_role.endswith(".0"):
-        user_role = user_role[:-2]
     my_name = str(st.session_state.get("user_name", "")).strip()
 
     pending = {1: False, 2: False, 3: False, 4: False, 5: False}
@@ -1357,9 +1371,7 @@ def render_tab_header_pending_css(target_csv, dest_csv, status_col, check_col, p
         if df_t is not None and not df_t.empty and len(df_t.columns) > status_col:
             status_series = df_t.iloc[:, status_col].astype(str).str.strip()
 
-            if user_role == "0":
-                pending[1] = bool((status_series == "差戻し").any())
-            elif my_name and len(df_t.columns) > applicant_col:
+            if my_name and len(df_t.columns) > applicant_col:
                 applicant_series = df_t.iloc[:, applicant_col].astype(str).str.strip()
                 pending[1] = bool(((status_series == "差戻し") & (applicant_series == my_name)).any())
 
