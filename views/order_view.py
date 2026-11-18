@@ -19,7 +19,7 @@ from views.maint_common import (
     find_already_transferred_row_id,
     render_duplicate_transfer_guard, render_tab5_own_prints_section,
     render_tab1_notifications_section,
-    BUSINESS_TAB_KEY,
+    BUSINESS_TAB_KEY, render_bulk_action_section,
 )
 
 ORDER_MODE_NAME = "商品発注"
@@ -851,6 +851,28 @@ def render_product_order_tabs():
                 else:
                     st.warning(f"承認待ちデータ: **{len(pending_df)} 件**")
 
+                    def _ord_bulk_row_label(row):
+                        _cname = str(row.iloc[3]) if len(row) > 3 and pd.notna(row.iloc[3]) else ""
+                        _ccode = str(row.iloc[2]) if len(row) > 2 and pd.notna(row.iloc[2]) else ""
+                        return f"{_cname}（{_ccode}）"
+
+                    def _ord_bulk_build_updated_row(row, user_name, now_str):
+                        def _vv(i):
+                            return str(row.iloc[i]) if i < len(row) and pd.notna(row.iloc[i]) else ""
+                        base = [_vv(0), _vv(1), _vv(2), _vv(3), _vv(4), _vv(5), _vv(6), _vv(7), _vv(8)]
+                        item_values = []
+                        for i in range(5):
+                            base_idx = 9 + i * 4
+                            for off in range(4):
+                                item_values.append(_vv(base_idx + off))
+                        return base + item_values + [_vv(29), user_name, now_str, "", "", ""]
+
+                    render_bulk_action_section(
+                        pending_df, _ord_bulk_row_label, _ord_bulk_build_updated_row,
+                        "APPROVE_MAINTENANCE", TARGET_SHEET_URL, "ord_bulk_approve",
+                        select_label="複数件をまとめて承認する（AIチェックは行いません）", button_verb="承認",
+                    )
+
                     # 💡 AIチェック：各申請の内容を過去の発注履歴と比較し、異常が無ければ
                     #    その場で自動承認する（APIキー未設定時は checked=False になり、
                     #    今まで通り人がチェックする挙動に自動でフォールバックする）。
@@ -1349,9 +1371,12 @@ def render_product_order_tabs():
                 st.info("現在、チェック対象のデータ（転記済みデータ）はありません。")
             else:
                 if len(df_dest.columns) > CHECK_TIME_COL_IDX:
-                    _unchecked_count = int((df_dest.iloc[:, CHECK_TIME_COL_IDX].fillna("").astype(str).str.strip() == "").sum())
+                    _unchecked_mask_all = df_dest.iloc[:, CHECK_TIME_COL_IDX].fillna("").astype(str).str.strip() == ""
+                    _unchecked_count = int(_unchecked_mask_all.sum())
+                    _ord_unchecked_df = df_dest[_unchecked_mask_all]
                 else:
                     _unchecked_count = 0
+                    _ord_unchecked_df = df_dest.iloc[0:0]
                 render_section_pending_banner("メンテナンスチェック", _unchecked_count)
 
                 show_checked = st.checkbox("✅ チェック済みのデータも表示する", value=False, key="chk_show_checked")
@@ -1376,6 +1401,25 @@ def render_product_order_tabs():
                         is_ascending = (sort_order == "昇順 (あ〜わ)")
                         df_display["_sort_store"] = df_display.iloc[:, store_col_idx].fillna("")
                         df_display = df_display.sort_values(by="_sort_store", ascending=is_ascending)
+
+                def _ord_chk_bulk_row_label(row):
+                    _cname = str(row.iloc[3]) if len(row) > 3 and pd.notna(row.iloc[3]) else ""
+                    _ccode = str(row.iloc[2]) if len(row) > 2 and pd.notna(row.iloc[2]) else ""
+                    return f"{_cname}（{_ccode}）"
+
+                def _ord_chk_bulk_build_updated_row(row, user_name, now_str):
+                    clean_base_row = ["" if pd.isna(row.iloc[i]) else str(row.iloc[i]) for i in range(len(row))]
+                    while len(clean_base_row) < CHECK_USER_COL_IDX + 1:
+                        clean_base_row.append("")
+                    clean_base_row[CHECK_TIME_COL_IDX] = now_str
+                    clean_base_row[CHECK_USER_COL_IDX] = user_name
+                    return clean_base_row
+
+                render_bulk_action_section(
+                    _ord_unchecked_df, _ord_chk_bulk_row_label, _ord_chk_bulk_build_updated_row,
+                    "UPDATE_MAINTENANCE_CHECK", DEST_SHEET_URL, "ord_bulk_check",
+                    select_label="複数件をまとめてチェック完了にする", button_verb="チェック完了",
+                )
 
                 iterator_chk = df_display.iterrows()
 

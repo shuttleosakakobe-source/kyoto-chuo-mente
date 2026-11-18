@@ -21,7 +21,7 @@ from views.maint_common import (
     find_already_transferred_row_id,
     render_duplicate_transfer_guard, render_tab5_own_prints_section,
     render_tab1_notifications_section,
-    BUSINESS_TAB_KEY,
+    BUSINESS_TAB_KEY, render_bulk_action_section,
 )
 from views.contract_view import get_contract_products, _cc_product_labels
 
@@ -678,6 +678,35 @@ def render_customer_balance_correction_tabs():
                     st.info("現在、未承認の申請はありません。")
                 else:
                     st.warning(f"承認待ちデータ: **{len(pending_df)} 件**")
+
+                    def _kz_bulk_row_label(row):
+                        def _vv(col_key):
+                            i = KZ_COL[col_key]
+                            return str(row.iloc[i]) if len(row) > i and pd.notna(row.iloc[i]) else ""
+                        return f"{_vv('cust_name')}（{_vv('cust_code')}）"
+
+                    def _kz_bulk_build_updated_row(row, user_name, now_str):
+                        def _vv(col_key):
+                            i = KZ_COL[col_key]
+                            return str(row.iloc[i]) if len(row) > i and pd.notna(row.iloc[i]) else ""
+                        item_values = []
+                        for item in kz_extract_items(row):
+                            for f in KZ_ITEM_FIELDS:
+                                item_values.append(item[f])
+                        return [
+                            _vv("timestamp"), _vv("applicant"), _vv("cust_code"), _vv("cust_name"),
+                            _vv("store_name"), _vv("store_code"),
+                        ] + item_values + [
+                            _vv("reason"), _vv("contact_person"), _vv("comment"),
+                            user_name, now_str, "", "", "",
+                        ]
+
+                    render_bulk_action_section(
+                        pending_df, _kz_bulk_row_label, _kz_bulk_build_updated_row,
+                        "APPROVE_CUSTOMER_BALANCE_CHANGE", KZ_TARGET_SHEET_URL, "kz_bulk_approve",
+                        select_label="複数件をまとめて承認する", button_verb="承認",
+                    )
+
                     for idx, row in pending_df.iloc[::-1].iterrows():
                         row_id = idx + 2
 
@@ -986,9 +1015,12 @@ def render_customer_balance_correction_tabs():
                 st.info("現在、チェック対象のデータ（転記済みデータ）はありません。")
             else:
                 if len(df_dest.columns) > KZ_COL["check_time"]:
-                    _unchecked_count = int((df_dest.iloc[:, KZ_COL["check_time"]].fillna("").astype(str).str.strip() == "").sum())
+                    _unchecked_mask_all = df_dest.iloc[:, KZ_COL["check_time"]].fillna("").astype(str).str.strip() == ""
+                    _unchecked_count = int(_unchecked_mask_all.sum())
+                    _kz_unchecked_df = df_dest[_unchecked_mask_all]
                 else:
                     _unchecked_count = 0
+                    _kz_unchecked_df = df_dest.iloc[0:0]
                 render_section_pending_banner("メンテナンスチェック", _unchecked_count)
 
                 show_checked = st.checkbox("✅ チェック済みのデータも表示する", value=False, key="kz_chk_show_checked")
@@ -1013,6 +1045,26 @@ def render_customer_balance_correction_tabs():
                         is_ascending = (sort_order == "昇順 (あ〜わ)")
                         df_display["_sort_store"] = df_display.iloc[:, store_col_idx].fillna("")
                         df_display = df_display.sort_values(by="_sort_store", ascending=is_ascending)
+
+                def _kz_chk_bulk_row_label(row):
+                    def _vv(col_key):
+                        i = KZ_COL[col_key]
+                        return str(row.iloc[i]) if len(row) > i and pd.notna(row.iloc[i]) else ""
+                    return f"{_vv('cust_name')}（{_vv('cust_code')}）"
+
+                def _kz_chk_bulk_build_updated_row(row, user_name, now_str):
+                    clean_base_row = ["" if pd.isna(row.iloc[i]) else str(row.iloc[i]) for i in range(len(row))]
+                    while len(clean_base_row) < KZ_COL["check_user"] + 1:
+                        clean_base_row.append("")
+                    clean_base_row[KZ_COL["check_time"]] = now_str
+                    clean_base_row[KZ_COL["check_user"]] = user_name
+                    return clean_base_row
+
+                render_bulk_action_section(
+                    _kz_unchecked_df, _kz_chk_bulk_row_label, _kz_chk_bulk_build_updated_row,
+                    "UPDATE_CUSTOMER_BALANCE_CHECK", KZ_DEST_SHEET_URL, "kz_bulk_check",
+                    select_label="複数件をまとめてチェック完了にする", button_verb="チェック完了",
+                )
 
                 for idx, row in df_display.iterrows():
                     row_id = idx + 2
