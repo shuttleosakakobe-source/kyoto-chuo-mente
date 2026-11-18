@@ -554,6 +554,136 @@ def render_section_pending_banner(label, count):
     )
 
 
+@st.dialog("一括処理の確認")
+def _render_bulk_confirm_dialog(items, action_label, on_confirm, on_cancel):
+    """render_bulk_action_section()専用の確認ダイアログ本体。
+    items: [(row_id, label_str), ...]。on_confirm/on_cancelは引数なしで呼ぶコールバック
+    （どちらも呼び出し側で最終的にst.rerun()すること。ダイアログは明示的に閉じない限り
+    開いたままになるため）。"""
+    st.write(f"以下の **{len(items)}件** を{action_label}します。よろしいですか？")
+    with st.container(height=240):
+        for _row_id, _label in items:
+            st.write(f"- {_label}")
+    c_ok, c_cancel = st.columns(2)
+    if c_ok.button(f"✅ {action_label}する", type="primary", use_container_width=True, key="bulk_dialog_confirm"):
+        on_confirm()
+    if c_cancel.button("キャンセル", use_container_width=True, key="bulk_dialog_cancel"):
+        on_cancel()
+
+
+def render_bulk_action_section(
+    df, row_label_fn, build_updated_row_fn, action_type, target_sheet_url, state_key,
+    *, select_label="複数件をまとめて処理する", button_verb="承認", min_rows=2,
+):
+    """TAB2（管理職チェック）の一括承認・TAB4（メンテナンスチェック）の一括チェック完了の
+    共通実装。チェックボックスで選んだ複数件を、内容は編集せず現在の内容のまま一括処理
+    する（個別に内容を修正したい場合は、従来通り各行の展開（st.expander）側で対応する）。
+    - df: 対象の行（承認待ち／チェック待ちで既にフィルタ済みのDataFrame）。indexは
+      元シートの行番号-2であること（row_id = idx + 2）。
+    - row_label_fn(row) -> str: チェックボックス・確認ダイアログに出す行ラベル。
+    - build_updated_row_fn(row, user_name, now_str) -> list: 一括処理時にGASへ送る
+      updated_row（各モードの既存の「承認」／「チェック完了」ボタンの組み立てと同じ内容。
+      承認者／チェック者名・日時を書き込む都合上、user_name・now_strを受け取れるように
+      している）。
+    - action_type / target_sheet_url: GASへのペイロードに使うaction名とシートURL。
+    - state_key: session_state内でこのセクションの状態（選択内容・確認ダイアログの
+      表示フラグ）を管理するための、呼び出し元ごとに一意なプレフィックス
+      （例: "rt_bulk_approve", "rt_bulk_check"）。
+    - select_label: 折りたたみセクションの見出し。
+    - button_verb: ボタン・確認ダイアログに出す動詞（例: "承認", "チェック完了"）。
+    - min_rows: 対象がこの件数未満の場合はUIを出さない（1件だけなら一括処理の
+      意味が薄く、画面を無駄に複雑にしないため）。
+    💡 GASへの送信はThreadPoolExecutorで並列実行し、選択件数が多い場合でも
+    待ち時間が件数分の合計にならないようにしている。"""
+    if df is None or df.empty or len(df) < min_rows:
+        return
+
+    with st.expander(f"☑️ {select_label}"):
+        rows_by_id = {idx + 2: row for idx, row in df.iloc[::-1].iterrows()}
+
+        # 💡 「全て選択」はvalue=で各チェックボックスの初期値を揃えようとすると、
+        # 既にkeyが存在するチェックボックス（2回目以降の描画）ではvalue=が無視されて
+        # 反映されない（Streamlitの仕様：widgetは一度keyが存在すると、その後は
+        # session_stateの値を使い、valueは初回のみ有効）。このため「全て選択」に
+        # チェックを入れても個々のチェックボックスが実際には選択状態にならない
+        # 不具合があった。on_changeコールバックで各チェックボックスのsession_state
+        # を直接書き換えることで、次の再実行時に正しく反映されるようにする。
+        def _toggle_select_all(_row_ids=list(rows_by_id.keys()), _state_key=state_key):
+            _new_value = st.session_state[f"{_state_key}_select_all"]
+            for _rid in _row_ids:
+                st.session_state[f"{_state_key}_chk_{_rid}"] = _new_value
+
+        st.checkbox(
+            "全て選択", key=f"{state_key}_select_all",
+            on_change=_toggle_select_all,
+        )
+        selected = []
+        for row_id, row in rows_by_id.items():
+            label = row_label_fn(row)
+            cb_key = f"{state_key}_chk_{row_id}"
+            if cb_key not in st.session_state:
+                st.session_state[cb_key] = False
+            if st.checkbox(label, key=cb_key):
+                selected.append((row_id, row, label))
+
+        if st.button(
+            f"✅ 選択した{len(selected)}件を一括{button_verb}",
+            disabled=not selected, type="primary", key=f"{state_key}_open_dialog",
+        ):
+            st.session_state[f"{state_key}_dialog_selected"] = selected
+            st.session_state[f"{state_key}_dialog_open"] = True
+            st.rerun()
+
+    if st.session_state.get(f"{state_key}_dialog_open"):
+        _sel = st.session_state.get(f"{state_key}_dialog_selected") or []
+        if not _sel:
+            st.session_state[f"{state_key}_dialog_open"] = False
+        else:
+            def _do_confirm():
+                user_name = st.session_state["user_name"]
+                now_str = datetime.now(JST).strftime("%Y/%m/%d %H:%M:%S")
+
+                def _post_one(item):
+                    _row_id, _row, _label = item
+                    _updated_row = build_updated_row_fn(_row, user_name, now_str)
+                    _res = post_to_gas({
+                        "action": action_type,
+                        "target_sheet_url": target_sheet_url,
+                        "row_index": _row_id,
+                        "updated_row": _updated_row,
+                    })
+                    return _row_id, _label, _res
+
+                results = []
+                with st.spinner(f"{len(_sel)}件を処理しています..."):
+                    with concurrent.futures.ThreadPoolExecutor(max_workers=min(8, len(_sel))) as _ex:
+                        for _r in _ex.map(_post_one, _sel):
+                            results.append(_r)
+
+                failed = [(rid, label, res) for rid, label, res in results if res.get("status") != "success"]
+                read_csv_cached.clear()
+                st.session_state[f"{state_key}_dialog_open"] = False
+                st.session_state[f"{state_key}_dialog_selected"] = []
+                if not failed:
+                    st.toast(f"✅ {len(_sel)}件を一括{button_verb}しました！", icon="✅")
+                    time.sleep(1)
+                else:
+                    st.error(
+                        "一部の処理に失敗しました：\n" +
+                        "\n".join(f"- {label}（行{rid}）: {res.get('message')}" for rid, label, res in failed)
+                    )
+                    time.sleep(2)
+                st.rerun()
+
+            def _do_cancel():
+                st.session_state[f"{state_key}_dialog_open"] = False
+                st.rerun()
+
+            _render_bulk_confirm_dialog(
+                [(rid, label) for rid, _row, label in _sel], button_verb, _do_confirm, _do_cancel,
+            )
+
+
 def render_top_rejection_alerts(mode_defs, pending_modes):
     """メンテナンス業務トップ画面の一番上に、差戻しに関するアラートを表示する。
     ①申請者本人向け：get_pending_modes()の結果（pending_modes）から「差戻し」の

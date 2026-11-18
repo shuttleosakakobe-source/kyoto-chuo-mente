@@ -17,7 +17,7 @@ from views.maint_common import (
     find_already_transferred_row_id,
     render_duplicate_transfer_guard, render_tab5_own_prints_section,
     render_tab1_notifications_section,
-    BUSINESS_TAB_KEY,
+    BUSINESS_TAB_KEY, render_bulk_action_section,
 )
 
 ROUTE_MODE_NAME = "ルート変更"
@@ -688,6 +688,32 @@ def render_route_change_tabs():
                     st.info("現在、未承認の申請はありません。")
                 else:
                     st.warning(f"承認待ちデータ: **{len(pending_df)} 件**")
+
+                    def _rt_bulk_row_label(row):
+                        def _vv(col_key):
+                            i = ROUTE_COL[col_key]
+                            return str(row.iloc[i]) if len(row) > i and pd.notna(row.iloc[i]) else ""
+                        return f"{_vv('cust_name')}（{_vv('cust_code')}）"
+
+                    def _rt_bulk_build_updated_row(row, user_name, now_str):
+                        def _vv(col_key):
+                            i = ROUTE_COL[col_key]
+                            return str(row.iloc[i]) if len(row) > i and pd.notna(row.iloc[i]) else ""
+                        return [
+                            _vv("timestamp"), _vv("applicant"), _vv("cust_code"), _vv("cust_name"),
+                            _vv("store_name"), _vv("store_code"),
+                            _vv("route_before"), _vv("op_before_code"), _vv("op_before_name"),
+                            _vv("route_after"), _vv("op_after_code"), _vv("op_after_name"), _vv("next_visit"),
+                            _vv("comment"), _vv("reason"), _vv("contact_person"),
+                            user_name, now_str, "", "", "",
+                        ]
+
+                    render_bulk_action_section(
+                        pending_df, _rt_bulk_row_label, _rt_bulk_build_updated_row,
+                        "APPROVE_ROUTE_CHANGE", ROUTE_TARGET_SHEET_URL, "rt_bulk_approve",
+                        select_label="複数件をまとめて承認する", button_verb="承認",
+                    )
+
                     for idx, row in pending_df.iloc[::-1].iterrows():
                         row_id = idx + 2
                         row_sig = hashlib.md5(
@@ -1027,9 +1053,15 @@ def render_route_change_tabs():
                 st.info("現在、チェック対象のデータ（転記済みデータ）はありません。")
             else:
                 if len(df_dest.columns) > ROUTE_COL["check_time"]:
-                    _unchecked_count = int((df_dest.iloc[:, ROUTE_COL["check_time"]].fillna("").astype(str).str.strip() == "").sum())
+                    _unchecked_mask_all = df_dest.iloc[:, ROUTE_COL["check_time"]].fillna("").astype(str).str.strip() == ""
+                    _unchecked_count = int(_unchecked_mask_all.sum())
+                    # 💡 一括チェック用：表示側の「チェック済みも表示する」トグルに関わらず、
+                    # 未チェックの行だけを対象にする（チェック済みのものを一括処理の対象に
+                    # 含めないため）。
+                    _rt_unchecked_df = df_dest[_unchecked_mask_all]
                 else:
                     _unchecked_count = 0
+                    _rt_unchecked_df = df_dest.iloc[0:0]
                 render_section_pending_banner("メンテナンスチェック", _unchecked_count)
 
                 show_checked = st.checkbox("✅ チェック済みのデータも表示する", value=False, key="rt_chk_show_checked")
@@ -1054,6 +1086,26 @@ def render_route_change_tabs():
                         is_ascending = (sort_order == "昇順 (あ〜わ)")
                         df_display["_sort_store"] = df_display.iloc[:, store_col_idx].fillna("")
                         df_display = df_display.sort_values(by="_sort_store", ascending=is_ascending)
+
+                def _rt_chk_bulk_row_label(row):
+                    def _vv(col_key):
+                        i = ROUTE_COL[col_key]
+                        return str(row.iloc[i]) if len(row) > i and pd.notna(row.iloc[i]) else ""
+                    return f"{_vv('cust_name')}（{_vv('cust_code')}）"
+
+                def _rt_chk_bulk_build_updated_row(row, user_name, now_str):
+                    clean_base_row = ["" if pd.isna(row.iloc[i]) else str(row.iloc[i]) for i in range(len(row))]
+                    while len(clean_base_row) < ROUTE_COL["check_user"] + 1:
+                        clean_base_row.append("")
+                    clean_base_row[ROUTE_COL["check_time"]] = now_str
+                    clean_base_row[ROUTE_COL["check_user"]] = user_name
+                    return clean_base_row
+
+                render_bulk_action_section(
+                    _rt_unchecked_df, _rt_chk_bulk_row_label, _rt_chk_bulk_build_updated_row,
+                    "UPDATE_ROUTE_CHECK", ROUTE_DEST_SHEET_URL, "rt_bulk_check",
+                    select_label="複数件をまとめてチェック完了にする", button_verb="チェック完了",
+                )
 
                 for idx, row in df_display.iterrows():
                     row_id = idx + 2
